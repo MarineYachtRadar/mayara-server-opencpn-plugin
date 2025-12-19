@@ -23,7 +23,7 @@
 #endif
 
 // Plugin namespace
-#define PLUGIN_BEGIN_NAMESPACE namespace mayara_server_pi {
+#define PLUGIN_BEGIN_NAMESPACE namespace mayara {
 #define PLUGIN_END_NAMESPACE }
 
 // Version string

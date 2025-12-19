@@ -8,7 +8,7 @@
 
 #include "ColorPalette.h"
 
-using namespace mayara_server_pi;
+using namespace mayara;
 
 ColorPalette::ColorPalette()
     : m_scheme(ColorScheme::Day)

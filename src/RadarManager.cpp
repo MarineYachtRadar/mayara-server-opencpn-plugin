@@ -10,7 +10,7 @@
 #include "mayara_server_pi.h"
 #include "RadarDisplay.h"
 
-using namespace mayara_server_pi;
+using namespace mayara;
 
 RadarManager::RadarManager(mayara_server_pi* plugin)
     : m_plugin(plugin)

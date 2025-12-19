@@ -33,9 +33,9 @@ if (WIN32)
   endif ()
 endif ()
 
-# Set up _build_cmd
+# Set up _build_cmd (use CMAKE_COMMAND for full path on Windows)
 set(_build_cmd
-  cmake --build ${CMAKE_BINARY_DIR} --parallel ${OCPN_NPROC} --config $<CONFIG>
+  ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --parallel ${OCPN_NPROC} --config $<CONFIG>
 )
 
 # Set up _build_target_cmd and _install_cmd
@@ -44,10 +44,10 @@ if (CMAKE_VERSION VERSION_LESS 3.16)
   set(_install_cmd make install)
 else ()
   set(_build_target_cmd
-      cmake --build ${CMAKE_BINARY_DIR} --parallel ${OCPN_NPROC}
+      ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --parallel ${OCPN_NPROC}
       --config $<CONFIG> --target
   )
-  set(_install_cmd cmake --install ${CMAKE_BINARY_DIR} --config $<CONFIG>)
+  set(_install_cmd ${CMAKE_COMMAND} --install ${CMAKE_BINARY_DIR} --config $<CONFIG>)
 endif ()
 
 # Command to remove directory
@@ -105,8 +105,8 @@ function (android_target)
   endif ()
   add_custom_command(
     OUTPUT android-conf-stamp
-    COMMAND cmake -E touch android-conf-stamp
-    COMMAND cmake
+    COMMAND ${CMAKE_COMMAND} -E touch android-conf-stamp
+    COMMAND ${CMAKE_COMMAND}
       -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/app/files
       -DBUILD_TYPE:STRING=tarball
       -DOCPN_TARGET_TUPLE:STRING=${OCPN_TARGET_TUPLE}
@@ -124,7 +124,7 @@ function (android_target)
   add_custom_target(android-finish)
   add_custom_command(
     TARGET android-finish
-    COMMAND cmake -P ${CMAKE_BINARY_DIR}/finish_tarball.cmake
+    COMMAND ${CMAKE_COMMAND} -P ${CMAKE_BINARY_DIR}/finish_tarball.cmake
     VERBATIM
   )
   add_custom_target(android)
@@ -137,12 +137,38 @@ function (tarball_target)
 
   # tarball target setup
   #
+  # Pass paths to nested cmake. On Windows, the nested cmake is invoked by
+  # MSBuild which doesn't inherit the shell environment, so we need to pass
+  # all dependency paths explicitly.
+  set(_nested_opts "")
+
+  # wxWidgets paths
+  if (DEFINED ENV{wxWidgets_ROOT_DIR})
+    list(APPEND _nested_opts "-DwxWidgets_ROOT_DIR=$ENV{wxWidgets_ROOT_DIR}")
+  elseif (DEFINED wxWidgets_ROOT_DIR)
+    list(APPEND _nested_opts "-DwxWidgets_ROOT_DIR=${wxWidgets_ROOT_DIR}")
+  endif()
+  if (DEFINED ENV{wxWidgets_LIB_DIR})
+    list(APPEND _nested_opts "-DwxWidgets_LIB_DIR=$ENV{wxWidgets_LIB_DIR}")
+  elseif (DEFINED wxWidgets_LIB_DIR)
+    list(APPEND _nested_opts "-DwxWidgets_LIB_DIR=${wxWidgets_LIB_DIR}")
+  endif()
+
+  # Gettext paths (for localization)
+  if (GETTEXT_MSGMERGE_EXECUTABLE)
+    list(APPEND _nested_opts "-DGETTEXT_MSGMERGE_EXECUTABLE=${GETTEXT_MSGMERGE_EXECUTABLE}")
+  endif()
+  if (GETTEXT_MSGFMT_EXECUTABLE)
+    list(APPEND _nested_opts "-DGETTEXT_MSGFMT_EXECUTABLE=${GETTEXT_MSGFMT_EXECUTABLE}")
+  endif()
+
   add_custom_command(
     OUTPUT tarball-conf-stamp
-    COMMAND cmake -E touch tarball-conf-stamp
-    COMMAND cmake
+    COMMAND ${CMAKE_COMMAND} -E touch tarball-conf-stamp
+    COMMAND ${CMAKE_COMMAND}
       -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/app/files
       -DBUILD_TYPE:STRING=tarball
+      ${_nested_opts}
       $ENV{CMAKE_BUILD_OPTS}
       ${CMAKE_BINARY_DIR}
   )
@@ -159,7 +185,7 @@ function (tarball_target)
   add_custom_target(tarball-finish)
   add_custom_command(
     TARGET tarball-finish      # Compute checksum
-    COMMAND cmake -P ${CMAKE_BINARY_DIR}/finish_tarball.cmake
+    COMMAND ${CMAKE_COMMAND} -P ${CMAKE_BINARY_DIR}/finish_tarball.cmake
     VERBATIM
   )
   add_dependencies(tarball-install tarball-build)
@@ -174,7 +200,7 @@ function (flatpak_target manifest)
   add_custom_target(flatpak-conf)
   add_custom_command(
     TARGET flatpak-conf
-    COMMAND cmake
+    COMMAND ${CMAKE_COMMAND}
       -DBUILD_TYPE:STRING=flatpak
       -Uplugin_target
       $ENV{CMAKE_BUILD_OPTS}
@@ -236,7 +262,7 @@ function (flatpak_target manifest)
   add_custom_target(flatpak)
   add_custom_command(
     TARGET flatpak
-    COMMAND cmake -P ${CMAKE_BINARY_DIR}/build_flatpak.cmake
+    COMMAND ${CMAKE_COMMAND} -P ${CMAKE_BINARY_DIR}/build_flatpak.cmake
     VERBATIM
   )
   add_dependencies(flatpak flatpak-conf)

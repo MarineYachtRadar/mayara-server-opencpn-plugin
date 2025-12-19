@@ -73,6 +73,7 @@ set(SRC
   include/ColorPalette.h
   include/icons.h
   include/pi_common.h
+  include/gl_funcs.h
 
   # Sources
   src/mayara_server_pi.cpp
@@ -89,6 +90,8 @@ set(SRC
   src/SpokeBuffer.cpp
   src/ColorPalette.cpp
   src/icons.cpp
+  src/gl_funcs.cpp
+  src/api_stubs.cpp
 )
 
 set(PKG_API_LIB api-18)  #  A directory in opencpn-libs/ for OpenCPN 5.8+
@@ -104,10 +107,14 @@ macro(late_init)
     ${CMAKE_CURRENT_LIST_DIR}/include
   )
 
-  # IXWebSocket for HTTP/WebSocket
+  # IXWebSocket for HTTP/WebSocket - build as static library to avoid DLL export issues
   set(USE_TLS OFF CACHE BOOL "Disable TLS")
+  set(USE_ZLIB OFF CACHE BOOL "Disable zlib compression")
   set(IXWEBSOCKET_INSTALL OFF CACHE BOOL "Skip install")
+  set(IXWEBSOCKET_BUILD_SHARED_LIBS_SAVED ${BUILD_SHARED_LIBS})
+  set(BUILD_SHARED_LIBS OFF)
   add_subdirectory(libs/IXWebSocket)
+  set(BUILD_SHARED_LIBS ${IXWEBSOCKET_BUILD_SHARED_LIBS_SAVED})
   target_link_libraries(${PACKAGE_NAME} ixwebsocket)
 
   # nlohmann/json for REST API parsing (header-only)

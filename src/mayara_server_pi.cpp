@@ -15,18 +15,18 @@
 
 #include <wx/fileconf.h>
 
-using namespace mayara_server_pi;
+using namespace mayara;
 
 // Timer ID
 enum { ID_TIMER = wxID_HIGHEST + 1 };
 
-BEGIN_EVENT_TABLE(mayara_server_pi::mayara_server_pi, wxEvtHandler)
-    EVT_TIMER(ID_TIMER, mayara_server_pi::mayara_server_pi::OnTimerNotify)
+BEGIN_EVENT_TABLE(mayara::mayara_server_pi, wxEvtHandler)
+    EVT_TIMER(ID_TIMER, mayara::mayara_server_pi::OnTimerNotify)
 END_EVENT_TABLE()
 
 // Plugin factory functions
 extern "C" DECL_EXP opencpn_plugin* create_pi(void* ppimgr) {
-    return new mayara_server_pi::mayara_server_pi(ppimgr);
+    return new mayara::mayara_server_pi(ppimgr);
 }
 
 extern "C" DECL_EXP void destroy_pi(opencpn_plugin* p) {
@@ -78,10 +78,10 @@ int mayara_server_pi::Init() {
         wxITEM_CHECK,
         _("MaYaRa Server Radar"),
         wxEmptyString,
-        m_icon,
-        wxS("MaYaRa Server"),
-        -1,
-        0
+        nullptr,        // clientData
+        -1,             // position
+        0,              // tool_sel
+        this            // plugin
     );
 
     // Create radar manager
@@ -148,7 +148,7 @@ void mayara_server_pi::OnToolbarToolCallback(int id) {
 }
 
 void mayara_server_pi::SetToolbarItemState(int id, bool enable) {
-    SetToolbarItemState(m_tool_id, enable);
+    ::SetToolbarItemState(m_tool_id, enable);
 }
 
 void mayara_server_pi::UpdateToolbarIcon() {

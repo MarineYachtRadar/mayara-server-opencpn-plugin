@@ -11,7 +11,7 @@
 #include "RadarManager.h"
 #include "RadarDisplay.h"
 
-using namespace mayara_server_pi;
+using namespace mayara;
 
 enum {
     ID_POWER_OFF = wxID_HIGHEST + 200,
@@ -266,7 +266,7 @@ void RadarControlDialog::OnRangeChanged(wxCommandEvent& event) {
     }
 }
 
-void RadarControlDialog::OnGainChanged(wxScrollEvent& event) {
+void RadarControlDialog::OnGainChanged(wxScrollEvent& WXUNUSED(event)) {
     if (m_updating_ui || !m_client || !m_radar) return;
 
     int value = m_gain_slider->GetValue();
@@ -286,7 +286,7 @@ void RadarControlDialog::OnGainAutoChanged(wxCommandEvent& event) {
     m_client->SetGain(m_radar->GetId(), value, autoMode);
 }
 
-void RadarControlDialog::OnSeaChanged(wxScrollEvent& event) {
+void RadarControlDialog::OnSeaChanged(wxScrollEvent& WXUNUSED(event)) {
     if (m_updating_ui || !m_client || !m_radar) return;
 
     int value = m_sea_slider->GetValue();
@@ -306,7 +306,7 @@ void RadarControlDialog::OnSeaAutoChanged(wxCommandEvent& event) {
     m_client->SetSea(m_radar->GetId(), value, autoMode);
 }
 
-void RadarControlDialog::OnRainChanged(wxScrollEvent& event) {
+void RadarControlDialog::OnRainChanged(wxScrollEvent& WXUNUSED(event)) {
     if (m_updating_ui || !m_client || !m_radar) return;
 
     int value = m_rain_slider->GetValue();

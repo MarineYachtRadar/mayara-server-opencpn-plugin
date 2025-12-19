@@ -9,7 +9,7 @@
 #include "SpokeBuffer.h"
 #include <cstring>
 
-using namespace mayara_server_pi;
+using namespace mayara;
 
 SpokeBuffer::SpokeBuffer(size_t spokes, size_t max_spoke_len)
     : m_spokes(spokes)

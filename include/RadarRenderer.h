@@ -11,12 +11,7 @@
 
 #include "pi_common.h"
 #include "ColorPalette.h"
-
-#ifdef __WXOSX__
-#include <OpenGL/gl.h>
-#else
-#include <GL/gl.h>
-#endif
+#include "gl_funcs.h"
 
 PLUGIN_BEGIN_NAMESPACE
 

@@ -9,7 +9,7 @@
 #include "SpokeReceiver.h"
 #include <ixwebsocket/IXWebSocket.h>
 
-using namespace mayara_server_pi;
+using namespace mayara;
 
 SpokeReceiver::SpokeReceiver(const std::string& url,
                              SpokeCallback callback,

@@ -9,7 +9,7 @@
 #include "RadarRenderer.h"
 #include "SpokeBuffer.h"
 
-using namespace mayara_server_pi;
+using namespace mayara;
 
 RadarRenderer::RadarRenderer()
     : m_program(0)

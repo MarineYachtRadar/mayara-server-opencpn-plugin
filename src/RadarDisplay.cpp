@@ -8,11 +8,12 @@
 
 #include "RadarDisplay.h"
 #include "mayara_server_pi.h"
+#include "RadarManager.h"
 #include "RadarOverlayRenderer.h"
 #include "RadarPPIRenderer.h"
 #include "RadarCanvas.h"
 
-using namespace mayara_server_pi;
+using namespace mayara;
 
 RadarDisplay::RadarDisplay(mayara_server_pi* plugin,
                            const std::string& id,

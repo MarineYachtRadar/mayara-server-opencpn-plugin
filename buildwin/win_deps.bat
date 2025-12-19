@@ -60,4 +60,5 @@ if not exist "%WXWIN%" (
 pathman add "%WXWIN%" > nul
 pathman add "%wxWidgets_LIB_DIR%" > nul
 
-refreshenv
+:: Note: Do not call refreshenv here as it clears the session variables we just set
+:: The wxWidgets_ROOT_DIR and wxWidgets_LIB_DIR are needed for cmake

@@ -15,9 +15,6 @@
 #include <map>
 #include <functional>
 
-// Forward declare nlohmann::json
-namespace nlohmann { class json; }
-
 PLUGIN_BEGIN_NAMESPACE
 
 // Radar info from discovery

@@ -35,11 +35,11 @@ private:
     // Event handlers
     void OnPowerButton(wxCommandEvent& event);
     void OnRangeChanged(wxCommandEvent& event);
-    void OnGainChanged(wxCommandEvent& event);
+    void OnGainChanged(wxScrollEvent& event);
     void OnGainAutoChanged(wxCommandEvent& event);
-    void OnSeaChanged(wxCommandEvent& event);
+    void OnSeaChanged(wxScrollEvent& event);
     void OnSeaAutoChanged(wxCommandEvent& event);
-    void OnRainChanged(wxCommandEvent& event);
+    void OnRainChanged(wxScrollEvent& event);
     void OnRefresh(wxCommandEvent& event);
     void OnClose(wxCloseEvent& event);
     void OnTimer(wxTimerEvent& event);

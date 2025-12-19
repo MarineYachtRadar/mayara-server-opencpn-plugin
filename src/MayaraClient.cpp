@@ -10,7 +10,7 @@
 #include <ixwebsocket/IXHttpClient.h>
 #include <nlohmann/json.hpp>
 
-using namespace mayara_server_pi;
+using namespace mayara;
 using json = nlohmann::json;
 
 MayaraClient::MayaraClient(const std::string& host, int port, int timeout_ms)

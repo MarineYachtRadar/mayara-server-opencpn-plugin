@@ -8,11 +8,12 @@
 
 #include "RadarCanvas.h"
 #include "mayara_server_pi.h"
+#include "RadarManager.h"
 #include "RadarDisplay.h"
 #include "RadarPPIRenderer.h"
 #include "SpokeBuffer.h"
 
-using namespace mayara_server_pi;
+using namespace mayara;
 
 // OpenGL attributes
 static int gl_attribs[] = {

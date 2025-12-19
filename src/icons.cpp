@@ -9,7 +9,7 @@
 #include "pi_common.h"
 #include "icons.h"
 
-using namespace mayara_server_pi;
+using namespace mayara;
 
 // Static icon storage
 static wxBitmap* s_icon_disconnected = nullptr;
@@ -52,14 +52,14 @@ static void CreateSimpleIcon(wxBitmap** icon, wxColour color) {
     *icon = new wxBitmap(img);
 }
 
-void mayara_server_pi::InitializeIcons() {
+void mayara::InitializeIcons() {
     CreateSimpleIcon(&s_icon_disconnected, wxColour(128, 128, 128));  // Gray
     CreateSimpleIcon(&s_icon_standby, wxColour(255, 200, 0));         // Yellow
     CreateSimpleIcon(&s_icon_transmit, wxColour(0, 200, 0));          // Green
     CreateSimpleIcon(&s_plugin_icon, wxColour(0, 150, 200));          // Blue
 }
 
-wxBitmap* mayara_server_pi::GetToolbarIcon(IconState state) {
+wxBitmap* mayara::GetToolbarIcon(IconState state) {
     switch (state) {
         case IconState::Disconnected:
             return s_icon_disconnected;
@@ -72,6 +72,6 @@ wxBitmap* mayara_server_pi::GetToolbarIcon(IconState state) {
     }
 }
 
-wxBitmap* mayara_server_pi::GetPluginIcon() {
+wxBitmap* mayara::GetPluginIcon() {
     return s_plugin_icon;
 }

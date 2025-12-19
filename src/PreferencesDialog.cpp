@@ -12,7 +12,7 @@
 
 #include <wx/spinctrl.h>
 
-using namespace mayara_server_pi;
+using namespace mayara;
 
 enum {
     ID_TEST_CONNECTION = wxID_HIGHEST + 100
