@@ -10,6 +10,7 @@
 #define _PREFERENCES_DIALOG_H_
 
 #include "pi_common.h"
+#include <wx/spinctrl.h>
 
 PLUGIN_BEGIN_NAMESPACE
 

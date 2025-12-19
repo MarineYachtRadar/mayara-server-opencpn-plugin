@@ -108,9 +108,10 @@ macro(late_init)
   )
 
   # IXWebSocket for HTTP/WebSocket - build as static library to avoid DLL export issues
-  set(USE_TLS OFF CACHE BOOL "Disable TLS")
-  set(USE_ZLIB OFF CACHE BOOL "Disable zlib compression")
-  set(IXWEBSOCKET_INSTALL OFF CACHE BOOL "Skip install")
+  # Use FORCE to override IXWebSocket's default option() values
+  set(USE_TLS OFF CACHE BOOL "Disable TLS" FORCE)
+  set(USE_ZLIB OFF CACHE BOOL "Disable zlib compression" FORCE)
+  set(IXWEBSOCKET_INSTALL OFF CACHE BOOL "Skip install" FORCE)
   set(IXWEBSOCKET_BUILD_SHARED_LIBS_SAVED ${BUILD_SHARED_LIBS})
   set(BUILD_SHARED_LIBS OFF)
   add_subdirectory(libs/IXWebSocket)

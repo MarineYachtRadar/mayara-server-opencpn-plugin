@@ -54,7 +54,7 @@ jobs:
       - name: Install dependencies and build
         run: |
           call buildwin/win_deps.bat
-          cmake -A ${{ matrix.arch }} -B build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} ${{ matrix.cmake_defines }}
+          cmake -A ${{ matrix.arch }} -B build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} ${{ matrix.cmake_defines }} -DGETTEXT_MSGFMT_EXECUTABLE="C:/Program Files (x86)/Poedit/GettextTools/bin/msgfmt.exe" -DGETTEXT_MSGMERGE_EXECUTABLE="C:/Program Files (x86)/Poedit/GettextTools/bin/msgmerge.exe"
           cmake --build build --config ${{env.BUILD_TYPE}} --target tarball
         shell: cmd
 
