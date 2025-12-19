@@ -1,0 +1,21 @@
+/*
+ * MaYaRa Server Plugin for OpenCPN
+ * Copyright (c) 2025 MarineYachtRadar
+ * License: MIT
+ */
+
+#ifndef _CONFIG_H_
+#define _CONFIG_H_
+
+#define PACKAGE_NAME "@PACKAGE_NAME@"
+
+#define VERSION_MAJOR @VERSION_MAJOR@
+#define VERSION_MINOR @VERSION_MINOR@
+#define VERSION_PATCH @VERSION_PATCH@
+#define VERSION_TWEAK @PROJECT_VERSION_TWEAK@
+
+#define OCPN_MIN_VERSION "@OCPN_MIN_VERSION@"
+
+#define VERSION_DATE "@VERSION_DATE@"
+
+#endif  // _CONFIG_H_

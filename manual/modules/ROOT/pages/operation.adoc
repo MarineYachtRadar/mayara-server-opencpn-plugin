@@ -1,0 +1,69 @@
+== Operation
+
+=== Starting the Plugin
+
+1. Ensure mayara-server is running and connected to your radar
+2. Click the MaYaRa toolbar button or enable via *Options* → *Plugins*
+3. The plugin will automatically discover connected radars
+
+=== Toolbar Icon States
+
+The toolbar icon color indicates connection status:
+
+* *Gray* - No connection to mayara-server
+* *Yellow* - Connected, radar in standby mode
+* *Green* - Connected, radar transmitting
+
+=== Chart Overlay Mode
+
+When enabled, the radar overlay displays directly on your chart:
+
+* Radar data is positioned relative to your vessel
+* Overlay respects chart rotation (head-up, north-up, course-up)
+* Transparency allows chart details to remain visible
+* Range rings show distance
+
+==== Overlay Behavior
+
+* The overlay scales automatically with chart zoom
+* Radar center follows your GPS position
+* Heading line points in direction of travel
+* Returns are color-coded by intensity
+
+=== PPI Window Mode
+
+The separate PPI (Plan Position Indicator) window provides a traditional
+radar display:
+
+==== Opening the PPI Window
+
+1. Enable "Show PPI Window" in preferences, or
+2. Right-click the toolbar icon and select "Show PPI Window"
+
+==== PPI Controls
+
+* *Mouse Wheel* - Zoom in/out
+* *Left Click* - Acquire ARPA target at that position
+* *Keyboard +/-* - Zoom in/out
+* *Keyboard 0* - Reset zoom
+
+==== PPI Display Elements
+
+* *Range Rings* - Concentric circles at regular intervals
+* *Heading Line* - Yellow line pointing forward
+* *ARPA Targets* - Red triangles with velocity vectors
+
+=== Both Modes Together
+
+You can use both chart overlay and PPI window simultaneously:
+
+* Chart overlay for navigation context
+* PPI window for detailed radar analysis
+
+=== Radar Discovery
+
+The plugin automatically discovers radars connected to mayara-server:
+
+* New radars are detected within the discovery interval (default 10 seconds)
+* Disconnected radars are removed from the display
+* Multiple radars can be displayed simultaneously

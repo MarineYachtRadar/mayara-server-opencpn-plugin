@@ -1,0 +1,72 @@
+== Configuration
+
+=== Preferences Dialog
+
+Access plugin preferences via *Options* → *Plugins* → *MaYaRa Server* → *Preferences*.
+
+=== Server Connection Settings
+
+[cols="1,1,3"]
+|===
+|Setting |Default |Description
+
+|Server Host
+|localhost
+|Hostname or IP address of the machine running mayara-server
+
+|Server Port
+|6502
+|Port number that mayara-server listens on
+
+|Discovery Interval
+|10 seconds
+|How often to poll for new or disconnected radars
+
+|Reconnect Interval
+|5 seconds
+|How often to retry connection when mayara-server is unavailable
+|===
+
+=== Display Options
+
+[cols="1,1,3"]
+|===
+|Setting |Default |Description
+
+|Show Chart Overlay
+|Enabled
+|Display radar data overlaid on the chart canvas
+
+|Show PPI Window
+|Disabled
+|Open a separate Plan Position Indicator window for traditional radar display
+|===
+
+=== Testing Connection
+
+Click the *Test Connection* button in the preferences dialog to verify
+that the plugin can reach mayara-server. The status will show:
+
+* *Connected! Found X radar(s)* - Connection successful
+* *Connected! No radars found* - Server reachable but no radars detected
+* *Connection failed* - Cannot reach the server
+
+=== OpenCPN Configuration
+
+==== OpenGL Mode
+
+*IMPORTANT*: OpenGL mode must be enabled for radar display.
+
+1. Go to *Options* → *Display* → *Advanced*
+2. Ensure *Use OpenGL* is checked
+3. Restart OpenCPN if changed
+
+==== Multiple Chart Canvases
+
+The plugin supports OpenCPN's multi-canvas mode. The radar overlay will
+display on all chart canvases when enabled.
+
+=== Saving Configuration
+
+Settings are automatically saved when you click *OK* in the preferences
+dialog. They persist across OpenCPN sessions.

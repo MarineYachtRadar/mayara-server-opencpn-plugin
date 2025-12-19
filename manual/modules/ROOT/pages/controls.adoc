@@ -1,0 +1,97 @@
+== Radar Controls
+
+=== Opening the Control Dialog
+
+Right-click the toolbar icon and select the radar you want to control,
+or double-click on the radar display.
+
+=== Power Control
+
+[cols="1,3"]
+|===
+|Button |Description
+
+|Off
+|Turn off the radar completely
+
+|Standby
+|Radar is powered but not transmitting (warming up or paused)
+
+|Transmit
+|Radar is actively transmitting and receiving
+|===
+
+=== Range Control
+
+Select the radar range from the dropdown. Available ranges depend on
+your radar model but typically include:
+
+* Short range: 125m, 250m, 500m, 750m, 1000m
+* Medium range: 1.5km, 2km, 3km, 4km, 6km
+* Long range: 8km, 12km, 16km, 24km, 36km, 48km
+
+=== Gain Control
+
+Adjusts the receiver sensitivity.
+
+* *Auto* - Radar automatically adjusts gain based on conditions
+* *Manual* - Use the slider to set gain (0-100%)
+
+Higher gain shows weaker returns but may increase noise.
+Lower gain reduces clutter but may miss weak targets.
+
+=== Sea Clutter Control
+
+Reduces interference from wave returns near the vessel.
+
+* *Auto* - Automatic sea clutter adjustment based on sea state
+* *Manual* - Use the slider to set rejection level (0-100%)
+
+Increase for rough seas, decrease in calm conditions.
+
+=== Rain Clutter Control
+
+Reduces interference from precipitation.
+
+* Use the slider to set rejection level (0-100%)
+
+Increase during rain, decrease in clear weather.
+
+=== Advanced Controls
+
+Depending on your radar model, additional controls may be available
+through mayara-server's web interface:
+
+* Interference Rejection
+* Target Expansion
+* Doppler Mode (for compatible radars)
+* Pulse Width
+* Bearing Alignment
+
+=== ARPA Targets
+
+==== Acquiring Targets
+
+1. Open the PPI window
+2. Left-click on a radar return
+3. The target will be tracked automatically
+
+==== Target Information
+
+Tracked targets display:
+
+* Direction of movement
+* Speed (from velocity vector length)
+* CPA (Closest Point of Approach)
+* TCPA (Time to CPA)
+
+==== Canceling Targets
+
+Right-click on a tracked target to cancel tracking.
+
+=== Guard Zones
+
+Guard zones are configured through mayara-server. When a target enters
+a guard zone, an alert is triggered.
+
+See mayara-server documentation for guard zone configuration.

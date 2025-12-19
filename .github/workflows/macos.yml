@@ -1,0 +1,83 @@
+---
+# yamllint disable rule:line-length
+name: macOS build
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - develop
+    paths-ignore:
+      - 'manual/**'
+    tags:
+      - '*'
+  pull_request:
+    branches:
+      - main
+      - master
+    paths-ignore:
+      - 'manual/**'
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build:
+    runs-on: ${{ matrix.runner }}
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS 14 (ARM64) Homebrew wxOSX
+            runner: macos-14
+            cmake_generator: Ninja
+            cmake_defines: -DCMAKE_CXX_STANDARD=17
+            use_homebrew: 1
+            push_cloudsmith: 1
+
+          - name: macOS 13 (x86_64) Homebrew wxOSX
+            runner: macos-13
+            cmake_generator: Ninja
+            cmake_defines: -DCMAKE_CXX_STANDARD=17
+            use_homebrew: 1
+            push_cloudsmith: 1
+
+    env:
+      CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+
+      - name: Install dependencies
+        run: |
+          ./ci/github-pre-build.sh
+        env:
+          USE_HOMEBREW: ${{ matrix.use_homebrew && matrix.use_homebrew || 0 }}
+
+      - name: Configure CMake
+        run: cmake -B build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} ${{ matrix.cmake_defines }}
+
+      - name: Build
+        run: cmake --build build --config ${{env.BUILD_TYPE}} --target tarball
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-${{ matrix.runner }}-tarball
+          path: |
+            build/*.tar.gz
+            build/*.xml
+
+      - name: Upload to Cloudsmith
+        if: matrix.push_cloudsmith == 1 && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        run: |
+          ./upload.sh
+        working-directory: build

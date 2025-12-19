@@ -1,0 +1,118 @@
+---
+# yamllint disable rule:line-length
+name: Raspberry Pi build
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - develop
+    paths-ignore:
+      - 'manual/**'
+    tags:
+      - '*'
+  pull_request:
+    branches:
+      - main
+      - master
+    paths-ignore:
+      - 'manual/**'
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build-arm64:
+    runs-on: ubuntu-latest
+    name: Raspberry Pi OS (arm64)
+
+    env:
+      CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Build in ARM64 container
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ci/Dockerfile.arm64
+          platforms: linux/arm64
+          push: false
+          tags: mayara-plugin-build:arm64
+
+      - name: Extract artifacts
+        run: |
+          docker create --name extract mayara-plugin-build:arm64
+          docker cp extract:/build/. ./build-arm64/
+          docker rm extract
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: raspberrypi-arm64-tarball
+          path: |
+            build-arm64/*.tar.gz
+            build-arm64/*.xml
+
+      - name: Upload to Cloudsmith
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        run: |
+          pip install cloudsmith-cli
+          cd build-arm64
+          ../ci/upload.sh
+
+  build-armhf:
+    runs-on: ubuntu-latest
+    name: Raspberry Pi OS (armhf/32-bit)
+
+    env:
+      CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm
+
+      - name: Build in ARM container
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ci/Dockerfile.armhf
+          platforms: linux/arm/v7
+          push: false
+          tags: mayara-plugin-build:armhf
+
+      - name: Extract artifacts
+        run: |
+          docker create --name extract mayara-plugin-build:armhf
+          docker cp extract:/build/. ./build-armhf/
+          docker rm extract
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: raspberrypi-armhf-tarball
+          path: |
+            build-armhf/*.tar.gz
+            build-armhf/*.xml
+
+      - name: Upload to Cloudsmith
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        run: |
+          pip install cloudsmith-cli
+          cd build-armhf
+          ../ci/upload.sh

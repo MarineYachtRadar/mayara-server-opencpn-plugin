@@ -1,0 +1,65 @@
+== Installation
+
+=== Installing mayara-server
+
+Before using this plugin, you need mayara-server running.
+
+==== Download
+
+Download the latest release for your platform from:
+https://github.com/MarineYachtRadar/mayara-server/releases
+
+==== Running
+
+[source,bash]
+----
+# Linux/macOS
+./mayara-server --port 6502
+
+# Windows
+mayara-server.exe --port 6502
+----
+
+See the mayara-server documentation for detailed installation and
+configuration options.
+
+=== Installing the Plugin
+
+==== Via OpenCPN Plugin Manager (Recommended)
+
+1. Open OpenCPN
+2. Go to *Options* → *Plugins*
+3. Click *Update Plugin Catalog*
+4. Find "MaYaRa Server" in the list
+5. Click *Install*
+6. Restart OpenCPN when prompted
+
+==== Manual Installation
+
+1. Download the appropriate package for your platform from the
+   https://github.com/MarineYachtRadar/mayara-server-opencpn-plugin/releases[releases page]
+
+2. In OpenCPN, go to *Options* → *Plugins*
+
+3. Click *Import Plugin...*
+
+4. Select the downloaded `.tar.gz` file
+
+5. Restart OpenCPN
+
+=== Verifying Installation
+
+After installation:
+
+1. Open *Options* → *Plugins*
+2. Find "MaYaRa Server" in the plugin list
+3. Click *Enable* if not already enabled
+4. A radar icon should appear in the toolbar
+
+=== First Run
+
+1. Ensure mayara-server is running
+2. Click the MaYaRa toolbar icon
+3. The plugin will automatically discover connected radars
+4. If no radars are found, check the connection settings in
+   *Options* → *Plugins* → *MaYaRa Server* → *Preferences*

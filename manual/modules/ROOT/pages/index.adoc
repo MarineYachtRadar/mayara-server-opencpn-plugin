@@ -1,0 +1,63 @@
+:imagesdir: ../images/
+== MaYaRa Server Plugin for OpenCPN
+
+mayara-server-pi is a plugin for http://www.opencpn.org[OpenCPN] that
+displays radar data from mayara-server, a multi-brand radar backend.
+
+_This manual covers mayara-server-pi version 1.0.0_
+
+=== Supported Radars
+
+The following radar brands are supported through mayara-server:
+
+* Furuno DRS (all models including NXT Doppler)
+* Navico (Broadband 3G/4G, HALO series with Doppler)
+* Raymarine (Quantum, RD series)
+* Garmin (xHD series)
+
+=== Features
+
+* *Chart Overlay* - Radar display integrated with your chart
+* *Separate PPI Window* - Dedicated radar display with range rings
+* *ARPA Targets* - Automatic tracking with CPA/TCPA display
+* *Guard Zones* - Configurable alert zones
+* *Full Control* - Access all radar settings (gain, sea, rain, range)
+* *Multi-Radar* - Support for multiple simultaneous radars
+
+=== Contents
+
+* xref:requirements.adoc[Requirements]
+* xref:installation.adoc[Installation]
+* xref:configuration.adoc[Configuration]
+* xref:operation.adoc[Operation]
+* xref:controls.adoc[Radar Controls]
+* xref:troubleshooting.adoc[Troubleshooting]
+
+=== Architecture
+
+This plugin connects to a separately running mayara-server instance.
+The server handles all radar protocol communication while the plugin
+focuses on display and user interface.
+
+[source]
+----
+┌─────────────┐      REST/WebSocket      ┌────────────────┐
+│   OpenCPN   │◄────────────────────────►│  mayara-server │
+│  (plugin)   │      localhost:6502      │   (backend)    │
+└─────────────┘                          └───────┬────────┘
+                                                 │
+                                          ┌──────▼──────┐
+                                          │    Radar    │
+                                          │  (network)  │
+                                          └─────────────┘
+----
+
+=== Links
+
+* https://github.com/MarineYachtRadar/mayara-server[mayara-server source]
+* https://github.com/MarineYachtRadar/mayara-server-opencpn-plugin[Plugin source]
+
+=== Credits
+
+This plugin is developed by MarineYachtRadar and connects to the
+mayara-server radar backend.

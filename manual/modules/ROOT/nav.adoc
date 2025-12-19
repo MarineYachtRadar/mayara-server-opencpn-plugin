@@ -1,0 +1,7 @@
+* xref:index.adoc[MaYaRa Server Plugin]
+** xref:requirements.adoc[Requirements]
+** xref:installation.adoc[Installation]
+** xref:configuration.adoc[Configuration]
+** xref:operation.adoc[Operation]
+** xref:controls.adoc[Radar Controls]
+** xref:troubleshooting.adoc[Troubleshooting]

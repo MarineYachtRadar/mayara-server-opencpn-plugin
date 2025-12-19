@@ -1,0 +1,129 @@
+# ~~~
+# Summary:      Plugin-specific build setup
+# Copyright (c) 2025 MarineYachtRadar
+# License:      MIT
+# ~~~
+
+# -------- Options ----------
+
+set(OCPN_TEST_REPO
+    "marineyachtradar/mayara-server-opencpn-unstable"
+    CACHE STRING "Default repository for untagged builds"
+)
+set(OCPN_BETA_REPO
+    "marineyachtradar/mayara-server-opencpn-beta"
+    CACHE STRING
+    "Default repository for tagged builds matching 'beta'"
+)
+set(OCPN_RELEASE_REPO
+    "marineyachtradar/mayara-server-opencpn"
+    CACHE STRING
+    "Default repository for tagged builds not matching 'beta'"
+)
+
+#
+# -------  Plugin setup --------
+#
+set(PKG_NAME mayara_server_pi)
+set(PKG_VERSION 1.0.0)
+set(PKG_PRERELEASE "beta")  # Empty, or a tag like 'beta'
+
+set(DISPLAY_NAME mayara-server)    # Dialogs, installer artifacts, ...
+set(PLUGIN_API_NAME MayaraServer)  # As of GetCommonName() in plugin API
+set(CPACK_PACKAGE_CONTACT "info@marineyachtradar.com")
+set(PKG_SUMMARY "Displays radar data from mayara-server in OpenCPN")
+set(PKG_DESCRIPTION [=[
+MaYaRa Server Plugin for OpenCPN
+
+Connects to a running mayara-server instance to display radar data from
+Furuno, Navico, Raymarine, and Garmin radars.
+
+Features:
+- Chart overlay rendering
+- Separate PPI (Plan Position Indicator) window
+- ARPA target tracking with CPA/TCPA
+- Full radar control (gain, sea, rain, range)
+- Multi-radar support
+
+WARNING: OPENGL MODE IS REQUIRED!
+
+Requires mayara-server running on localhost or network.
+]=])
+
+set(PKG_AUTHOR "MarineYachtRadar")
+set(PKG_IS_OPEN_SOURCE "yes")
+set(PKG_HOMEPAGE https://github.com/MarineYachtRadar/mayara-server-opencpn-plugin)
+set(PKG_INFO_URL https://github.com/MarineYachtRadar/mayara-server)
+
+
+set(SRC
+  # Headers
+  include/mayara_server_pi.h
+  include/MayaraClient.h
+  include/SpokeReceiver.h
+  include/RadarManager.h
+  include/RadarDisplay.h
+  include/RadarRenderer.h
+  include/RadarOverlayRenderer.h
+  include/RadarPPIRenderer.h
+  include/RadarCanvas.h
+  include/RadarControlDialog.h
+  include/PreferencesDialog.h
+  include/SpokeBuffer.h
+  include/ColorPalette.h
+  include/icons.h
+  include/pi_common.h
+
+  # Sources
+  src/mayara_server_pi.cpp
+  src/MayaraClient.cpp
+  src/SpokeReceiver.cpp
+  src/RadarManager.cpp
+  src/RadarDisplay.cpp
+  src/RadarRenderer.cpp
+  src/RadarOverlayRenderer.cpp
+  src/RadarPPIRenderer.cpp
+  src/RadarCanvas.cpp
+  src/RadarControlDialog.cpp
+  src/PreferencesDialog.cpp
+  src/SpokeBuffer.cpp
+  src/ColorPalette.cpp
+  src/icons.cpp
+)
+
+set(PKG_API_LIB api-18)  #  A directory in opencpn-libs/ for OpenCPN 5.8+
+
+macro(late_init)
+  # Perform initialization after the PACKAGE_NAME library, compilers
+  # and ocpn::api is available.
+
+  # Fix OpenGL deprecated warnings in Xcode
+  target_compile_definitions(${PACKAGE_NAME} PRIVATE GL_SILENCE_DEPRECATION)
+
+  target_include_directories(${PACKAGE_NAME} PUBLIC
+    ${CMAKE_CURRENT_LIST_DIR}/include
+  )
+
+  # IXWebSocket for HTTP/WebSocket
+  set(USE_TLS OFF CACHE BOOL "Disable TLS")
+  set(IXWEBSOCKET_INSTALL OFF CACHE BOOL "Skip install")
+  add_subdirectory(libs/IXWebSocket)
+  target_link_libraries(${PACKAGE_NAME} ixwebsocket)
+
+  # nlohmann/json for REST API parsing (header-only)
+  target_include_directories(${PACKAGE_NAME} PRIVATE
+    ${CMAKE_CURRENT_LIST_DIR}/libs/json/single_include
+  )
+
+  # Platform-specific
+  if(WIN32)
+    target_link_libraries(${PACKAGE_NAME} ws2_32 wsock32)
+  endif()
+endmacro ()
+
+macro(add_plugin_libraries)
+  # Add libraries required by this plugin
+
+  add_subdirectory("opencpn-libs/wxJSON")
+  target_link_libraries(${PACKAGE_NAME} ocpn::wxjson)
+endmacro ()

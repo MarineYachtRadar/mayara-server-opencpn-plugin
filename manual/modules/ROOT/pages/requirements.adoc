@@ -1,0 +1,57 @@
+== Requirements
+
+=== Software Requirements
+
+* OpenCPN 5.8 or later
+* mayara-server running on the same machine or network
+* OpenGL support (required for radar display)
+
+=== Hardware Requirements
+
+* Supported radar scanner connected to your network:
+** Furuno DRS series
+** Navico Broadband 3G/4G or HALO
+** Raymarine Quantum or RD series
+** Garmin xHD series
+* Computer running OpenCPN:
+** Raspberry Pi (recommended for dedicated installations)
+** Windows 10/11
+** macOS 10.14 or later
+** Linux (x86_64 or ARM64)
+* OpenGL-capable graphics
+
+=== Network Configuration
+
+The plugin connects to mayara-server via HTTP/WebSocket on port 6502.
+
+==== Same Machine (Default)
+
+If mayara-server runs on the same computer as OpenCPN:
+
+* Host: `localhost`
+* Port: `6502`
+
+==== Remote Server
+
+If mayara-server runs on a different machine:
+
+* Ensure both machines are on the same network
+* Configure the server's IP address in plugin preferences
+* Ensure port 6502 is not blocked by firewalls
+
+==== Typical Network Setup
+
+[source]
+----
+┌────────────┐                      ┌──────────────┐
+│  Radar     │◄────── Ethernet ────►│  Raspberry   │
+│  Scanner   │                      │  Pi with     │
+└────────────┘                      │  mayara-     │
+                                    │  server      │
+                                    └──────┬───────┘
+                                           │ WiFi/LAN
+                                    ┌──────▼───────┐
+                                    │  Laptop with │
+                                    │  OpenCPN     │
+                                    └──────────────┘
+----

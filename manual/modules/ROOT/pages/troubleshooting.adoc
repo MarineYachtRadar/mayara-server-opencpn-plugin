@@ -1,0 +1,118 @@
+== Troubleshooting
+
+=== Connection Issues
+
+==== "Cannot connect to mayara-server"
+
+1. Verify mayara-server is running:
++
+[source,bash]
+----
+# Check if server is listening
+curl http://localhost:6502/v2/api/radars
+----
+
+2. Check the host and port in plugin preferences
+
+3. If using a remote server, verify network connectivity
+
+4. Check for firewall blocking port 6502
+
+==== "Connected but no radars found"
+
+1. Verify radar is powered on and connected to network
+
+2. Check mayara-server logs for radar detection:
++
+[source,bash]
+----
+mayara-server --log-level debug
+----
+
+3. Verify network interface configuration in mayara-server
+
+4. Some radars need time to warm up before being detected
+
+=== Display Issues
+
+==== "Radar overlay not visible"
+
+1. Ensure OpenGL is enabled:
+   * *Options* → *Display* → *Advanced* → *Use OpenGL*
+
+2. Verify "Show Chart Overlay" is enabled in plugin preferences
+
+3. Check that radar is in Transmit mode (toolbar icon should be green)
+
+4. Ensure your GPS position is valid (needed for overlay positioning)
+
+==== "Radar display is blank or frozen"
+
+1. Check the spoke data connection:
+   * Look for "Spokes received: Active" in control dialog
+
+2. Verify WebSocket connection to mayara-server
+
+3. Try restarting the plugin (disable then re-enable)
+
+==== "Radar display is offset from chart"
+
+1. Check your heading source in OpenCPN
+
+2. Verify mayara-server is receiving heading data
+
+3. Check bearing alignment in radar settings
+
+=== Performance Issues
+
+==== "OpenCPN is slow with radar enabled"
+
+1. Reduce radar range to limit data volume
+
+2. Consider using PPI window only (disable overlay)
+
+3. On Raspberry Pi, ensure adequate cooling
+
+4. Check CPU usage of mayara-server
+
+==== "Radar updates are delayed"
+
+1. Check network latency to mayara-server
+
+2. Reduce discovery polling interval
+
+3. Verify no network congestion
+
+=== Error Messages
+
+==== "HTTP 404" or "JSON parse error"
+
+API version mismatch. Ensure:
+
+1. Plugin version matches mayara-server version
+2. Both are updated to latest releases
+
+==== "WebSocket connection failed"
+
+1. Check firewall settings
+2. Verify mayara-server WebSocket endpoint is accessible
+3. Try restarting mayara-server
+
+=== Getting Help
+
+If problems persist:
+
+1. Check the https://github.com/MarineYachtRadar/mayara-server-opencpn-plugin/issues[GitHub Issues]
+
+2. Gather diagnostic information:
+   * OpenCPN version
+   * Plugin version
+   * mayara-server version
+   * Operating system
+   * Radar model
+
+3. Enable debug logging:
+   * In mayara-server: `--log-level debug`
+   * In OpenCPN: Enable plugin logging
+
+4. Submit an issue with logs attached
