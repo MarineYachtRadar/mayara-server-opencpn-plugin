@@ -1,0 +1,58 @@
+---
+version: 2.1
+
+parameters:
+  run_workflow_deploy:
+    type: boolean
+    default: true
+
+jobs:
+  build-android-aarch64:
+    docker:
+      - image: cimg/android:2024.01-ndk
+    resource_class: medium
+    environment:
+      - OCPN_TARGET: android-aarch64
+      - CMAKE_BUILD_PARALLEL_LEVEL: 2
+    steps:
+      - checkout
+      - run: git submodule update --init --recursive
+      - run: ci/circleci-build-android.sh
+      - run: ci/circleci-upload.sh
+
+  build-android-armhf:
+    docker:
+      - image: cimg/android:2024.01-ndk
+    resource_class: medium
+    environment:
+      - OCPN_TARGET: android-armhf
+      - CMAKE_BUILD_PARALLEL_LEVEL: 2
+    steps:
+      - checkout
+      - run: git submodule update --init --recursive
+      - run: ci/circleci-build-android.sh
+      - run: ci/circleci-upload.sh
+
+workflows:
+  version: 2
+  build_all:
+    when: << pipeline.parameters.run_workflow_deploy >>
+    jobs:
+      - build-android-aarch64:
+          filters:
+            branches:
+              only:
+                - main
+                - master
+                - develop
+            tags:
+              only: /.*/
+      - build-android-armhf:
+          filters:
+            branches:
+              only:
+                - main
+                - master
+                - develop
+            tags:
+              only: /.*/

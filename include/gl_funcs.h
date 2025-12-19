@@ -24,6 +24,8 @@
 #include <GL/gl.h>
 #include <GL/glext.h>
 #else
+// On Linux/GTK, we need GL_GLEXT_PROTOTYPES to get shader function declarations
+#define GL_GLEXT_PROTOTYPES
 #include <GL/gl.h>
 #include <GL/glext.h>
 #endif
