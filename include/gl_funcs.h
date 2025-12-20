@@ -12,6 +12,14 @@
 #ifndef _GL_FUNCS_H_
 #define _GL_FUNCS_H_
 
+// On Linux/GTK, we need GL_GLEXT_PROTOTYPES to get shader function declarations
+// This MUST be defined before ANY GL headers are included
+#if !defined(__APPLE__) && !defined(_WIN32) && !defined(__WXMSW__)
+#ifndef GL_GLEXT_PROTOTYPES
+#define GL_GLEXT_PROTOTYPES
+#endif
+#endif
+
 // Ensure wx platform detection is done
 #include <wx/defs.h>
 
@@ -24,8 +32,7 @@
 #include <GL/gl.h>
 #include <GL/glext.h>
 #else
-// On Linux/GTK, we need GL_GLEXT_PROTOTYPES to get shader function declarations
-#define GL_GLEXT_PROTOTYPES
+// Linux/GTK - GL_GLEXT_PROTOTYPES already defined above
 #include <GL/gl.h>
 #include <GL/glext.h>
 #endif

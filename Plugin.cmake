@@ -126,6 +126,10 @@ macro(late_init)
   # Platform-specific
   if(WIN32)
     target_link_libraries(${PACKAGE_NAME} ws2_32 wsock32)
+  elseif(UNIX AND NOT APPLE)
+    # Linux: Define GL_GLEXT_PROTOTYPES before any GL headers are included
+    # This enables shader function declarations in glext.h
+    target_compile_definitions(${PACKAGE_NAME} PRIVATE GL_GLEXT_PROTOTYPES)
   endif()
 endmacro ()
 
