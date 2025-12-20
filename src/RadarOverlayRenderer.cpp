@@ -6,6 +6,11 @@
  * Radar overlay renderer for chart canvas
  */
 
+// Define GL_GLEXT_PROTOTYPES before any headers to enable shader functions on Linux
+#ifndef GL_GLEXT_PROTOTYPES
+#define GL_GLEXT_PROTOTYPES
+#endif
+
 #include "RadarOverlayRenderer.h"
 #include "SpokeBuffer.h"
 

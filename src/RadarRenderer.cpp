@@ -6,6 +6,11 @@
  * Base class for radar rendering
  */
 
+// Define GL_GLEXT_PROTOTYPES before any headers to enable shader functions on Linux
+#ifndef GL_GLEXT_PROTOTYPES
+#define GL_GLEXT_PROTOTYPES
+#endif
+
 #include "RadarRenderer.h"
 #include "SpokeBuffer.h"
 
