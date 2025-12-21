@@ -56,45 +56,51 @@ set(PKG_HOMEPAGE https://github.com/MarineYachtRadar/mayara-server-opencpn-plugi
 set(PKG_INFO_URL https://github.com/MarineYachtRadar/mayara-server)
 
 
+# MINIMAL TEST BUILD - uncomment full SRC list below when testing is done
 set(SRC
-  # Headers
-  include/mayara_server_pi.h
-  include/MayaraClient.h
-  include/SpokeReceiver.h
-  include/RadarManager.h
-  include/RadarDisplay.h
-  include/RadarRenderer.h
-  include/RadarOverlayRenderer.h
-  include/RadarPPIRenderer.h
-  include/RadarCanvas.h
-  include/RadarControlDialog.h
-  include/PreferencesDialog.h
-  include/SpokeBuffer.h
-  include/ColorPalette.h
-  include/icons.h
   include/pi_common.h
-  include/gl_funcs.h
-
-  # Sources
-  src/mayara_server_pi.cpp
-  src/MayaraClient.cpp
-  src/SpokeReceiver.cpp
-  src/RadarManager.cpp
-  src/RadarDisplay.cpp
-  src/RadarRenderer.cpp
-  src/RadarOverlayRenderer.cpp
-  src/RadarPPIRenderer.cpp
-  src/RadarCanvas.cpp
-  src/RadarControlDialog.cpp
-  src/PreferencesDialog.cpp
-  src/SpokeBuffer.cpp
-  src/ColorPalette.cpp
-  src/icons.cpp
-  src/gl_funcs.cpp
-  src/api_stubs.cpp
+  src/mayara_server_pi_minimal.cpp
 )
 
-set(PKG_API_LIB api-18)  #  A directory in opencpn-libs/ for OpenCPN 5.8+
+# FULL SRC LIST (commented out for minimal testing):
+#set(SRC
+#  # Headers
+#  include/mayara_server_pi.h
+#  include/MayaraClient.h
+#  include/SpokeReceiver.h
+#  include/RadarManager.h
+#  include/RadarDisplay.h
+#  include/RadarRenderer.h
+#  include/RadarOverlayRenderer.h
+#  include/RadarPPIRenderer.h
+#  include/RadarCanvas.h
+#  include/RadarControlDialog.h
+#  include/PreferencesDialog.h
+#  include/SpokeBuffer.h
+#  include/ColorPalette.h
+#  include/icons.h
+#  include/pi_common.h
+#  include/gl_funcs.h
+#
+#  # Sources
+#  src/mayara_server_pi.cpp
+#  src/MayaraClient.cpp
+#  src/SpokeReceiver.cpp
+#  src/RadarManager.cpp
+#  src/RadarDisplay.cpp
+#  src/RadarRenderer.cpp
+#  src/RadarOverlayRenderer.cpp
+#  src/RadarPPIRenderer.cpp
+#  src/RadarCanvas.cpp
+#  src/RadarControlDialog.cpp
+#  src/PreferencesDialog.cpp
+#  src/SpokeBuffer.cpp
+#  src/ColorPalette.cpp
+#  src/icons.cpp
+#  src/gl_funcs.cpp
+#)
+
+set(PKG_API_LIB api-16)  #  API 1.16 like radar_pi uses - works with OpenCPN 5.12
 
 macro(late_init)
   # Perform initialization after the PACKAGE_NAME library, compilers
@@ -107,25 +113,27 @@ macro(late_init)
     ${CMAKE_CURRENT_LIST_DIR}/include
   )
 
+  # MINIMAL TEST - disable external libs
   # IXWebSocket for HTTP/WebSocket - build as static library to avoid DLL export issues
   # Use FORCE to override IXWebSocket's default option() values
-  set(USE_TLS OFF CACHE BOOL "Disable TLS" FORCE)
-  set(USE_ZLIB OFF CACHE BOOL "Disable zlib compression" FORCE)
-  set(IXWEBSOCKET_INSTALL OFF CACHE BOOL "Skip install" FORCE)
-  set(IXWEBSOCKET_BUILD_SHARED_LIBS_SAVED ${BUILD_SHARED_LIBS})
-  set(BUILD_SHARED_LIBS OFF)
-  add_subdirectory(libs/IXWebSocket)
-  set(BUILD_SHARED_LIBS ${IXWEBSOCKET_BUILD_SHARED_LIBS_SAVED})
-  target_link_libraries(${PACKAGE_NAME} ixwebsocket)
+  #set(USE_TLS OFF CACHE BOOL "Disable TLS" FORCE)
+  #set(USE_ZLIB OFF CACHE BOOL "Disable zlib compression" FORCE)
+  #set(IXWEBSOCKET_INSTALL OFF CACHE BOOL "Skip install" FORCE)
+  #set(IXWEBSOCKET_BUILD_SHARED_LIBS_SAVED ${BUILD_SHARED_LIBS})
+  #set(BUILD_SHARED_LIBS OFF)
+  #add_subdirectory(libs/IXWebSocket)
+  #set(BUILD_SHARED_LIBS ${IXWEBSOCKET_BUILD_SHARED_LIBS_SAVED})
+  #target_link_libraries(${PACKAGE_NAME} ixwebsocket)
 
   # nlohmann/json for REST API parsing (header-only)
-  target_include_directories(${PACKAGE_NAME} PRIVATE
-    ${CMAKE_CURRENT_LIST_DIR}/libs/json/single_include
-  )
+  #target_include_directories(${PACKAGE_NAME} PRIVATE
+  #  ${CMAKE_CURRENT_LIST_DIR}/libs/json/single_include
+  #)
 
   # Platform-specific
   if(WIN32)
-    target_link_libraries(${PACKAGE_NAME} ws2_32 wsock32)
+    # MINIMAL TEST - no extra libs needed
+    #target_link_libraries(${PACKAGE_NAME} ws2_32 wsock32)
   elseif(UNIX AND NOT APPLE)
     # Linux: Define GL_GLEXT_PROTOTYPES before any GL headers are included
     # This enables shader function declarations in glext.h
@@ -135,7 +143,7 @@ endmacro ()
 
 macro(add_plugin_libraries)
   # Add libraries required by this plugin
-
-  add_subdirectory("opencpn-libs/wxJSON")
-  target_link_libraries(${PACKAGE_NAME} ocpn::wxjson)
+  # MINIMAL TEST - disable wxJSON
+  #add_subdirectory("opencpn-libs/wxJSON")
+  #target_link_libraries(${PACKAGE_NAME} ocpn::wxjson)
 endmacro ()

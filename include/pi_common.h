@@ -9,6 +9,14 @@
 
 #include "config.h"
 
+// On Windows 32-bit, define _SSIZE_T_DEFINED before wx includes to prevent
+// conflict with IXWebSocket's ssize_t definition
+#ifdef _WIN32
+#ifndef _SSIZE_T_DEFINED
+#define _SSIZE_T_DEFINED
+#endif
+#endif
+
 #include <wx/wx.h>
 #include <wx/glcanvas.h>
 

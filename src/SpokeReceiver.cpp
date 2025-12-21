@@ -6,6 +6,9 @@
  * WebSocket client for receiving spoke data from mayara-server
  */
 
+// Include wx headers first to get ssize_t defined before IXWebSocket
+#include "pi_common.h"
+
 #include "SpokeReceiver.h"
 #include <ixwebsocket/IXWebSocket.h>
 

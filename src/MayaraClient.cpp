@@ -6,6 +6,9 @@
  * REST API client for mayara-server
  */
 
+// Include wx headers first to get ssize_t defined before IXWebSocket
+#include "pi_common.h"
+
 #include "MayaraClient.h"
 #include <ixwebsocket/IXHttpClient.h>
 #include <nlohmann/json.hpp>

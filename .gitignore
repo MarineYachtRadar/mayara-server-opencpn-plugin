@@ -37,3 +37,7 @@ compile_commands.json
 # Local configuration
 .uploadrc
 local-build.rc
+
+# temp
+tmp/
+nul

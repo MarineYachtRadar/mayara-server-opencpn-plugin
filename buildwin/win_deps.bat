@@ -47,15 +47,15 @@ if not exist "%WXWIN%" (
   wget --version > nul 2>&1 || choco install --no-progress -y wget
   wget -q https://github.com/wxWidgets/wxWidgets/releases/download/v3.2.4/wxWidgets-3.2.4-headers.7z ^
       -O wxWidgetsHeaders.7z
-  wget -q https://github.com/wxWidgets/wxWidgets/releases/download/v3.2.4/wxMSW-3.2.4_vc14x_x64_ReleaseDLL.7z ^
+  wget -q https://github.com/wxWidgets/wxWidgets/releases/download/v3.2.4/wxMSW-3.2.4_vc14x_ReleaseDLL.7z ^
       -O wxWidgetsDLL.7z
-  wget -q https://github.com/wxWidgets/wxWidgets/releases/download/v3.2.4/wxMSW-3.2.4_vc14x_x64_Dev.7z ^
+  wget -q https://github.com/wxWidgets/wxWidgets/releases/download/v3.2.4/wxMSW-3.2.4_vc14x_Dev.7z ^
       -O wxWidgetsDev.7z
   7z i > nul 2>&1 || choco install -y 7zip
   7z x -aoa wxWidgetsHeaders.7z -o%WXWIN%
   7z x -aoa wxWidgetsDLL.7z -o%WXWIN%
   7z x -aoa wxWidgetsDev.7z -o%WXWIN%
-  ren "%WXWIN%\lib\vc14x_x64_dll" vc_dll
+  ren "%WXWIN%\lib\vc14x_dll" vc_dll
 )
 pathman add "%WXWIN%" > nul
 pathman add "%wxWidgets_LIB_DIR%" > nul

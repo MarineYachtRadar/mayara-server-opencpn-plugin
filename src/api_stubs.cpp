@@ -31,8 +31,9 @@ double PlugInChartBase::GetNormalScaleMax(double canvas_scale_factor, int canvas
 double PlugInChartBase::GetNearestPreferredScalePPM(double target_scale_ppm) { return 0.0; }
 bool PlugInChartBase::GetChartExtent(ExtentPI* pext) { return false; }
 wxBitmap& PlugInChartBase::RenderRegionView(const PlugIn_ViewPort& VPoint, const wxRegion& Region) {
-    static wxBitmap empty;
-    return empty;
+    static wxBitmap* empty = nullptr;
+    if (!empty) empty = new wxBitmap();
+    return *empty;
 }
 bool PlugInChartBase::AdjustVP(PlugIn_ViewPort& vp_last, PlugIn_ViewPort& vp_proposed) { return false; }
 void PlugInChartBase::GetValidCanvasRegion(const PlugIn_ViewPort& VPoint, wxRegion* pValidRegion) {}
@@ -78,8 +79,9 @@ int PlugInChartBaseExtended::RenderRegionViewOnGL(const wxGLContext& glc,
                                                    bool b_use_stencil) { return 0; }
 wxBitmap& PlugInChartBaseExtended::RenderRegionViewOnDCNoText(const PlugIn_ViewPort& VPoint,
                                                                const wxRegion& Region) {
-    static wxBitmap empty;
-    return empty;
+    static wxBitmap* empty = nullptr;
+    if (!empty) empty = new wxBitmap();
+    return *empty;
 }
 bool PlugInChartBaseExtended::RenderRegionViewOnDCTextOnly(wxMemoryDC& dc,
                                                             const PlugIn_ViewPort& VPoint,
@@ -232,7 +234,8 @@ OCPN_downloadEvent::~OCPN_downloadEvent() {}
 wxEvent* OCPN_downloadEvent::Clone() const { return new OCPN_downloadEvent(*this); }
 
 // wxEVT_DOWNLOAD_EVENT
-wxEventType wxEVT_DOWNLOAD_EVENT = wxNewEventType();
+// Note: Using 0 as placeholder - actual value comes from OpenCPN at runtime
+wxEventType wxEVT_DOWNLOAD_EVENT = 0;
 
 // OpenCPN API callback functions - these are resolved at runtime when loaded by OpenCPN
 // On Windows we need stubs to satisfy the linker

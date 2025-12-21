@@ -14,14 +14,16 @@
 #include "icons.h"
 
 #include <wx/fileconf.h>
+#include <ixwebsocket/IXNetSystem.h>
 
 using namespace mayara;
 
 // Timer ID
 enum { ID_TIMER = wxID_HIGHEST + 1 };
 
-BEGIN_EVENT_TABLE(mayara::mayara_server_pi, wxEvtHandler)
-    EVT_TIMER(ID_TIMER, mayara::mayara_server_pi::OnTimerNotify)
+// Event table - matching radar_pi pattern
+BEGIN_EVENT_TABLE(mayara_server_pi, wxEvtHandler)
+    EVT_TIMER(ID_TIMER, mayara_server_pi::OnTimerNotify)
 END_EVENT_TABLE()
 
 // Plugin factory functions
@@ -57,6 +59,9 @@ mayara_server_pi::~mayara_server_pi() {
 }
 
 int mayara_server_pi::Init() {
+    // Initialize network system for IXWebSocket (required on Windows)
+    ix::initNetSystem();
+
     // Get parent window and data directory
     m_parent_window = GetOCPNCanvasWindow();
     m_data_dir = GetPluginDataDir("mayara_server_pi");
@@ -119,6 +124,9 @@ bool mayara_server_pi::DeInit() {
 
     // Save configuration
     SaveConfig();
+
+    // Cleanup network system
+    ix::uninitNetSystem();
 
     return true;
 }

@@ -67,26 +67,54 @@ The plugin connects to mayara-server via HTTP/WebSocket API. All radar protocol 
 - wxWidgets (via OpenCPN)
 - Git
 
-### Build Steps
+### Build Steps (Linux/macOS)
 
 ```bash
 # Clone with submodules
 git clone --recurse-submodules https://github.com/MarineYachtRadar/mayara-server-opencpn-plugin.git
 cd mayara-server-opencpn-plugin
 
-# Create build directory
-mkdir build && cd build
-
-# Configure
-cmake ..
-
-# Build
-cmake --build . --target tarball
+# Configure and build
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --config Release --target tarball
 ```
 
-### Platform-specific builds
+### Build Steps (Windows)
 
-See the `ci/` directory for platform-specific build scripts.
+```cmd
+# Clone with submodules
+git clone --recurse-submodules https://github.com/MarineYachtRadar/mayara-server-opencpn-plugin.git
+cd mayara-server-opencpn-plugin
+
+# Install dependencies (downloads wxWidgets, etc.)
+call buildwin\win_deps.bat
+
+# Configure (from MSVC Developer Command Prompt)
+cmake -A Win32 -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=17
+
+# Build
+cmake --build build --config Release --target tarball-finish
+
+# dirk rebuild
+C:\ProgramData\opencpn\opencpn.ini
+---> add CatalogExpert=1
+
+rmdir /s /q cache\wxWidgets
+rmdir /s /q build
+call buildwin\win_deps.bat
+"C:\Program Files\CMake\bin\cmake.exe" -A Win32 -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=17 -DGETTEXT_MSGFMT_EXECUTABLE="C:/Program Files (x86)/Poedit/GettextTools/bin/msgfmt.exe" -DGETTEXT_MSGMERGE_EXECUTABLE="C:/Program Files (x86)/Poedit/GettextTools/bin/msgmerge.exe"
+"C:\Program Files\CMake\bin\cmake.exe" --build build --config Release --target tarball-finish
+
+cd build\app
+"C:\Program Files\CMake\bin\cmake.exe" -E tar czf ..\mayara_server_pi.tar.gz files
+del "C:\Users\Mastercabin\AppData\Local\opencpn\plugins\mayara_server_pi.dll"
+
+# clear blacklist 
+rm -f c:/Users/Mastercabin/AppData/Local/opencpn/plugins/mayara_server_pi.dll && rm -f c:/ProgramData/opencpn/plugins/install_data/mayaraserver.* && echo "Removed old plugin files"
+
+```
+
+The built plugin tarball will be in `build/`.
 
 ## Documentation
 
