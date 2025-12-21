@@ -3,32 +3,143 @@
  * Copyright (c) 2025 MarineYachtRadar
  * License: MIT
  *
- * Main plugin implementation
+ * Main plugin implementation - inline class definition to avoid DLL static init issues
  */
 
-#include "mayara_server_pi.h"
+// Use same includes as working test version
+#include "config.h"
+#include <wx/wx.h>
+#include <wx/bitmap.h>
+#include <wx/fileconf.h>
+#include "ocpn_plugin.h"
+
+// Include support files AFTER basic wx includes
 #include "RadarManager.h"
 #include "RadarDisplay.h"
 #include "RadarOverlayRenderer.h"
 #include "PreferencesDialog.h"
 #include "icons.h"
 
-#include <wx/fileconf.h>
 #include <ixwebsocket/IXNetSystem.h>
-
-using namespace mayara;
+#include <memory>
+#include <string>
 
 // Timer ID
 enum { ID_TIMER = wxID_HIGHEST + 1 };
 
-// Event table - matching radar_pi pattern
+// Default settings (copied from pi_common.h to avoid include)
+#define DEFAULT_SERVER_HOST "localhost"
+#define DEFAULT_SERVER_PORT 6502
+#define DEFAULT_DISCOVERY_INTERVAL 10
+#define DEFAULT_RECONNECT_INTERVAL 5
+
+// Plugin icon
+static wxBitmap* g_pPluginIcon = nullptr;
+
+// Plugin class defined inline (not from header) to avoid DLL static init crash
+class mayara_server_pi : public opencpn_plugin_116, public wxEvtHandler {
+public:
+    mayara_server_pi(void* ppimgr);
+    ~mayara_server_pi() override;
+
+    // Required plugin methods
+    int Init() override;
+    bool DeInit() override;
+
+    int GetAPIVersionMajor() override { return 1; }
+    int GetAPIVersionMinor() override { return 16; }
+    int GetPlugInVersionMajor() override { return VERSION_MAJOR; }
+    int GetPlugInVersionMinor() override { return VERSION_MINOR; }
+
+    wxBitmap* GetPlugInBitmap() override;
+    wxString GetCommonName() override { return _("MaYaRa Server"); }
+    wxString GetShortDescription() override;
+    wxString GetLongDescription() override;
+
+    // Toolbar
+    int GetToolbarToolCount() override { return 1; }
+    void OnToolbarToolCallback(int id) override;
+    void SetToolbarItemState(int id, bool enable);
+    void UpdateToolbarIcon();
+
+    // Preferences
+    void ShowPreferencesDialog(wxWindow* parent) override;
+
+    // OpenGL overlay - API 1.16 signature
+    bool RenderGLOverlayMultiCanvas(wxGLContext* pcontext,
+                                     PlugIn_ViewPort* vp,
+                                     int canvasIndex) override;
+
+    // Position updates
+    void SetPositionFixEx(PlugIn_Position_Fix_Ex& pfix) override;
+
+    // Configuration
+    bool LoadConfig();
+    bool SaveConfig();
+
+    // Accessors
+    wxWindow* GetParentWindow() { return m_parent_window; }
+    wxString GetDataDir() { return m_data_dir; }
+
+    std::string GetServerHost() const { return m_server_host; }
+    int GetServerPort() const { return m_server_port; }
+    int GetDiscoveryPollInterval() const { return m_discovery_poll_interval; }
+    int GetReconnectInterval() const { return m_reconnect_interval; }
+    bool GetShowOverlay() const { return m_show_overlay; }
+    bool GetShowPPIWindow() const { return m_show_ppi_window; }
+
+    void SetServerHost(const std::string& host) { m_server_host = host; }
+    void SetServerPort(int port) { m_server_port = port; }
+    void SetDiscoveryPollInterval(int interval) { m_discovery_poll_interval = interval; }
+    void SetReconnectInterval(int interval) { m_reconnect_interval = interval; }
+    void SetShowOverlay(bool show) { m_show_overlay = show; }
+    void SetShowPPIWindow(bool show) { m_show_ppi_window = show; }
+
+    GeoPosition GetOwnPosition() const { return m_own_position; }
+    double GetHeading() const { return m_heading; }
+    bool IsPositionValid() const { return m_position_valid; }
+
+    mayara::RadarManager* GetRadarManager() { return m_radar_manager.get(); }
+
+private:
+    void OnTimerNotify(wxTimerEvent& event);
+
+    wxWindow* m_parent_window;
+    wxFileConfig* m_config;
+    wxString m_data_dir;
+    int m_tool_id;
+    wxBitmap* m_icon;
+    wxTimer* m_timer;
+
+    // Settings
+    std::string m_server_host;
+    int m_server_port;
+    int m_discovery_poll_interval;
+    int m_reconnect_interval;
+    bool m_show_overlay;
+    bool m_show_ppi_window;
+
+    // Radar management
+    std::unique_ptr<mayara::RadarManager> m_radar_manager;
+
+    // Position data from OpenCPN
+    GeoPosition m_own_position;
+    double m_heading;
+    double m_cog;
+    double m_sog;
+    bool m_position_valid;
+
+    DECLARE_EVENT_TABLE()
+};
+
+// Event table
 BEGIN_EVENT_TABLE(mayara_server_pi, wxEvtHandler)
     EVT_TIMER(ID_TIMER, mayara_server_pi::OnTimerNotify)
 END_EVENT_TABLE()
 
 // Plugin factory functions
 extern "C" DECL_EXP opencpn_plugin* create_pi(void* ppimgr) {
-    return new mayara::mayara_server_pi(ppimgr);
+    return new mayara_server_pi(ppimgr);
 }
 
 extern "C" DECL_EXP void destroy_pi(opencpn_plugin* p) {
@@ -36,7 +147,7 @@ extern "C" DECL_EXP void destroy_pi(opencpn_plugin* p) {
 }
 
 mayara_server_pi::mayara_server_pi(void* ppimgr)
-    : opencpn_plugin_118(ppimgr)
+    : opencpn_plugin_116(ppimgr)
     , m_parent_window(nullptr)
     , m_config(nullptr)
     , m_tool_id(-1)
@@ -53,86 +164,40 @@ mayara_server_pi::mayara_server_pi(void* ppimgr)
     , m_sog(0.0)
     , m_position_valid(false)
 {
+    g_pPluginIcon = new wxBitmap(16, 16);
 }
 
 mayara_server_pi::~mayara_server_pi() {
+    delete g_pPluginIcon;
+    g_pPluginIcon = nullptr;
 }
 
 int mayara_server_pi::Init() {
-    // Initialize network system for IXWebSocket (required on Windows)
-    ix::initNetSystem();
-
-    // Get parent window and data directory
+    // MINIMAL INIT for testing
     m_parent_window = GetOCPNCanvasWindow();
-    m_data_dir = GetPluginDataDir("mayara_server_pi");
-
-    // Initialize icons
-    InitializeIcons();
-
-    // Load configuration
-    m_config = GetOCPNConfigObject();
-    LoadConfig();
-
-    // Add toolbar button
-    m_icon = GetToolbarIcon(IconState::Disconnected);
-    m_tool_id = InsertPlugInToolSVG(
-        _("MaYaRa Server"),
-        wxEmptyString,  // SVG not used
-        wxEmptyString,
-        wxEmptyString,
-        wxITEM_CHECK,
-        _("MaYaRa Server Radar"),
-        wxEmptyString,
-        nullptr,        // clientData
-        -1,             // position
-        0,              // tool_sel
-        this            // plugin
-    );
-
-    // Create radar manager
-    m_radar_manager = std::make_unique<RadarManager>(this);
-
-    // Start polling timer (100ms)
-    m_timer = new wxTimer(this, ID_TIMER);
-    m_timer->Start(100);
-
-    // Start radar manager
-    m_radar_manager->Start();
-
-    // Return capabilities
-    return WANTS_OVERLAY_CALLBACK |
-           WANTS_OPENGL_OVERLAY_CALLBACK |
-           WANTS_DYNAMIC_OPENGL_OVERLAY_CALLBACK |
-           INSTALLS_TOOLBAR_TOOL |
-           WANTS_PREFERENCES |
-           WANTS_CONFIG;
+    return WANTS_PREFERENCES;
 }
 
 bool mayara_server_pi::DeInit() {
-    // Stop timer
     if (m_timer) {
         m_timer->Stop();
         delete m_timer;
         m_timer = nullptr;
     }
 
-    // Stop radar manager
     if (m_radar_manager) {
         m_radar_manager->Stop();
         m_radar_manager.reset();
     }
 
-    // Save configuration
     SaveConfig();
-
-    // Cleanup network system
     ix::uninitNetSystem();
 
     return true;
 }
 
 wxBitmap* mayara_server_pi::GetPlugInBitmap() {
-    return GetPluginIcon();
+    return g_pPluginIcon;
 }
 
 wxString mayara_server_pi::GetShortDescription() {
@@ -148,7 +213,6 @@ wxString mayara_server_pi::GetLongDescription() {
 
 void mayara_server_pi::OnToolbarToolCallback(int id) {
     if (id == m_tool_id) {
-        // Toggle radar display
         m_show_overlay = !m_show_overlay;
         SetToolbarItemState(id, m_show_overlay);
         SaveConfig();
@@ -160,7 +224,7 @@ void mayara_server_pi::SetToolbarItemState(int id, bool enable) {
 }
 
 void mayara_server_pi::UpdateToolbarIcon() {
-    IconState state = IconState::Disconnected;
+    mayara::IconState state = mayara::IconState::Disconnected;
 
     if (m_radar_manager && m_radar_manager->IsConnected()) {
         auto radars = m_radar_manager->GetActiveRadars();
@@ -173,10 +237,10 @@ void mayara_server_pi::UpdateToolbarIcon() {
             }
         }
 
-        state = transmitting ? IconState::Transmit : IconState::Standby;
+        state = transmitting ? mayara::IconState::Transmit : mayara::IconState::Standby;
     }
 
-    wxBitmap* icon = GetToolbarIcon(state);
+    wxBitmap* icon = mayara::GetToolbarIcon(state);
     if (icon && icon != m_icon) {
         m_icon = icon;
         SetToolbarToolBitmaps(m_tool_id, m_icon, m_icon);
@@ -184,12 +248,9 @@ void mayara_server_pi::UpdateToolbarIcon() {
 }
 
 void mayara_server_pi::ShowPreferencesDialog(wxWindow* parent) {
-    PreferencesDialog dlg(parent, this);
+    mayara::PreferencesDialog dlg(parent, this);
     if (dlg.ShowModal() == wxID_OK) {
-        // Settings are saved by dialog
         SaveConfig();
-
-        // Restart radar manager with new settings
         if (m_radar_manager) {
             m_radar_manager->Stop();
             m_radar_manager->Start();
@@ -200,22 +261,12 @@ void mayara_server_pi::ShowPreferencesDialog(wxWindow* parent) {
 bool mayara_server_pi::RenderGLOverlayMultiCanvas(
     wxGLContext* pcontext,
     PlugIn_ViewPort* vp,
-    int canvasIndex,
-    int priority)
+    int canvasIndex)
 {
-    // Only render at OVERLAY_LEGACY priority
-    if (priority != OVERLAY_LEGACY) return false;
-
-    // Check if overlay is enabled
     if (!m_show_overlay) return false;
-
-    // Check if we have valid position
     if (!m_position_valid) return false;
-
-    // Check if radar manager is running
     if (!m_radar_manager || !m_radar_manager->IsConnected()) return false;
 
-    // Render each active radar
     for (auto* radar : m_radar_manager->GetActiveRadars()) {
         if (!radar || radar->GetStatus() != RadarStatus::Transmit) continue;
 
@@ -244,15 +295,10 @@ void mayara_server_pi::SetPositionFixEx(PlugIn_Position_Fix_Ex& pfix) {
 }
 
 void mayara_server_pi::OnTimerNotify(wxTimerEvent& event) {
-    // Poll radar manager
     if (m_radar_manager) {
         m_radar_manager->Poll();
     }
-
-    // Update toolbar icon based on connection state
     UpdateToolbarIcon();
-
-    // Request canvas refresh if overlay enabled and connected
     if (m_show_overlay && m_radar_manager && m_radar_manager->IsConnected()) {
         RequestRefresh(GetOCPNCanvasWindow());
     }

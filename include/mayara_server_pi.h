@@ -13,13 +13,14 @@
 #include <memory>
 #include <string>
 
-PLUGIN_BEGIN_NAMESPACE
+// Forward declarations - in mayara namespace
+namespace mayara {
+    class RadarManager;
+    class PreferencesDialog;
+}
 
-// Forward declarations
-class RadarManager;
-class PreferencesDialog;
-
-class mayara_server_pi : public opencpn_plugin_118, public wxEvtHandler {
+// Plugin class must be in global namespace to avoid DLL static init issues on Windows
+class mayara_server_pi : public opencpn_plugin_116, public wxEvtHandler {
 public:
     mayara_server_pi(void* ppimgr);
     ~mayara_server_pi() override;
@@ -29,7 +30,7 @@ public:
     bool DeInit() override;
 
     int GetAPIVersionMajor() override { return 1; }
-    int GetAPIVersionMinor() override { return 18; }
+    int GetAPIVersionMinor() override { return 16; }  // Must match base class opencpn_plugin_116
     int GetPlugInVersionMajor() override { return VERSION_MAJOR; }
     int GetPlugInVersionMinor() override { return VERSION_MINOR; }
 
@@ -48,10 +49,10 @@ public:
     void ShowPreferencesDialog(wxWindow* parent) override;
 
     // -------- OpenGL overlay rendering --------
+    // API 1.16 signature - 3 parameters (no priority)
     bool RenderGLOverlayMultiCanvas(wxGLContext* pcontext,
                                      PlugIn_ViewPort* vp,
-                                     int canvasIndex,
-                                     int priority) override;
+                                     int canvasIndex) override;
 
     // -------- Position updates --------
     void SetPositionFixEx(PlugIn_Position_Fix_Ex& pfix) override;
@@ -85,7 +86,7 @@ public:
     bool IsPositionValid() const { return m_position_valid; }
 
     // Radar manager accessor
-    RadarManager* GetRadarManager() { return m_radar_manager.get(); }
+    mayara::RadarManager* GetRadarManager() { return m_radar_manager.get(); }
 
 private:
     void OnTimerNotify(wxTimerEvent& event);
@@ -106,7 +107,7 @@ private:
     bool m_show_ppi_window;
 
     // Radar management
-    std::unique_ptr<RadarManager> m_radar_manager;
+    std::unique_ptr<mayara::RadarManager> m_radar_manager;
 
     // Position data from OpenCPN
     GeoPosition m_own_position;
@@ -115,9 +116,7 @@ private:
     double m_sog;
     bool m_position_valid;
 
-    DECLARE_EVENT_TABLE()
+    // No DECLARE_EVENT_TABLE - using Bind() instead to avoid static init issues
 };
-
-PLUGIN_END_NAMESPACE
 
 #endif  // _MAYARA_SERVER_PI_H_

@@ -15,15 +15,17 @@
 #include <map>
 #include <set>
 
+// Forward declaration - plugin class is in global namespace
+class mayara_server_pi;
+
 PLUGIN_BEGIN_NAMESPACE
 
 // Forward declarations
-class mayara_server_pi;
 class RadarDisplay;
 
 class RadarManager {
 public:
-    RadarManager(mayara_server_pi* plugin);
+    RadarManager(::mayara_server_pi* plugin);
     ~RadarManager();
 
     // Start/stop discovery and connections
@@ -51,7 +53,7 @@ private:
     void TryReconnect();
     void ShowConnectionNotification(bool connected);
 
-    mayara_server_pi* m_plugin;
+    ::mayara_server_pi* m_plugin;
     std::unique_ptr<MayaraClient> m_client;
 
     // Known radars

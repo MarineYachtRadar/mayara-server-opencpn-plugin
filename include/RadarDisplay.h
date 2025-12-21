@@ -15,17 +15,19 @@
 #include "SpokeBuffer.h"
 #include <memory>
 
+// Forward declaration - plugin class is in global namespace
+class mayara_server_pi;
+
 PLUGIN_BEGIN_NAMESPACE
 
 // Forward declarations
-class mayara_server_pi;
 class RadarOverlayRenderer;
 class RadarPPIRenderer;
 class RadarCanvas;
 
 class RadarDisplay {
 public:
-    RadarDisplay(mayara_server_pi* plugin,
+    RadarDisplay(::mayara_server_pi* plugin,
                  const std::string& id,
                  const RadarInfo& info);
     ~RadarDisplay();
@@ -69,7 +71,7 @@ public:
 private:
     void OnSpokeReceived(const SpokeData& spoke);
 
-    mayara_server_pi* m_plugin;
+    ::mayara_server_pi* m_plugin;
     std::string m_id;
     RadarInfo m_info;
 

@@ -11,16 +11,18 @@
 
 #include "pi_common.h"
 
+// Forward declaration - plugin class is in global namespace
+class mayara_server_pi;
+
 PLUGIN_BEGIN_NAMESPACE
 
 // Forward declarations
 class RadarDisplay;
-class mayara_server_pi;
 
 class RadarCanvas : public wxGLCanvas {
 public:
     RadarCanvas(wxWindow* parent,
-                mayara_server_pi* plugin,
+                ::mayara_server_pi* plugin,
                 RadarDisplay* radar);
     ~RadarCanvas();
 
@@ -42,7 +44,7 @@ private:
     // Convert mouse position to radar coordinates (bearing, distance)
     bool MouseToRadar(int x, int y, double& bearing, double& distance);
 
-    mayara_server_pi* m_plugin;
+    ::mayara_server_pi* m_plugin;
     RadarDisplay* m_radar;
     wxGLContext* m_context;
 
@@ -61,7 +63,7 @@ private:
 class RadarFrame : public wxFrame {
 public:
     RadarFrame(wxWindow* parent,
-               mayara_server_pi* plugin,
+               ::mayara_server_pi* plugin,
                RadarDisplay* radar);
     ~RadarFrame();
 
@@ -70,7 +72,7 @@ public:
 private:
     void OnClose(wxCloseEvent& event);
 
-    mayara_server_pi* m_plugin;
+    ::mayara_server_pi* m_plugin;
     RadarDisplay* m_radar;
     RadarCanvas* m_canvas;
 

@@ -12,16 +12,18 @@
 #include "pi_common.h"
 #include "MayaraClient.h"
 
+// Forward declaration - plugin class is in global namespace
+class mayara_server_pi;
+
 PLUGIN_BEGIN_NAMESPACE
 
 // Forward declarations
-class mayara_server_pi;
 class RadarDisplay;
 
 class RadarControlDialog : public wxDialog {
 public:
     RadarControlDialog(wxWindow* parent,
-                       mayara_server_pi* plugin,
+                       ::mayara_server_pi* plugin,
                        RadarDisplay* radar);
     ~RadarControlDialog();
 
@@ -44,7 +46,7 @@ private:
     void OnClose(wxCloseEvent& event);
     void OnTimer(wxTimerEvent& event);
 
-    mayara_server_pi* m_plugin;
+    ::mayara_server_pi* m_plugin;
     RadarDisplay* m_radar;
     MayaraClient* m_client;
 

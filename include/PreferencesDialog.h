@@ -12,14 +12,14 @@
 #include "pi_common.h"
 #include <wx/spinctrl.h>
 
-PLUGIN_BEGIN_NAMESPACE
-
-// Forward declarations
+// Forward declaration - plugin class is in global namespace
 class mayara_server_pi;
+
+PLUGIN_BEGIN_NAMESPACE
 
 class PreferencesDialog : public wxDialog {
 public:
-    PreferencesDialog(wxWindow* parent, mayara_server_pi* plugin);
+    PreferencesDialog(wxWindow* parent, ::mayara_server_pi* plugin);
     ~PreferencesDialog();
 
     // Get values from dialog
@@ -39,7 +39,7 @@ private:
     void LoadSettings();
     void SaveSettings();
 
-    mayara_server_pi* m_plugin;
+    ::mayara_server_pi* m_plugin;
 
     // Server connection
     wxTextCtrl* m_host_ctrl;

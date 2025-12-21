@@ -111,7 +111,8 @@ del "C:\Users\Mastercabin\AppData\Local\opencpn\plugins\mayara_server_pi.dll"
 
 # clear blacklist 
 rm -f c:/Users/Mastercabin/AppData/Local/opencpn/plugins/mayara_server_pi.dll && rm -f c:/ProgramData/opencpn/plugins/install_data/mayaraserver.* && echo "Removed old plugin files"
-
+clean also C:\ProgramData\opencpn\plugins\install_data\
+Delete any mayaraserver files in 
 ```
 
 The built plugin tarball will be in `build/`.
