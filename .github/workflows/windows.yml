@@ -31,10 +31,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: Windows MSVC x64
+          - name: Windows MSVC x86
             runner: windows-latest
             cmake_defines: -DCMAKE_CXX_STANDARD=17
-            arch: x64
+            arch: x86
+            cmake_arch: Win32
             push_cloudsmith: 1
 
     defaults:
@@ -54,7 +55,7 @@ jobs:
       - name: Install dependencies and build
         run: |
           call buildwin/win_deps.bat
-          cmake -A ${{ matrix.arch }} -B build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} ${{ matrix.cmake_defines }} -DGETTEXT_MSGFMT_EXECUTABLE="C:/Program Files (x86)/Poedit/GettextTools/bin/msgfmt.exe" -DGETTEXT_MSGMERGE_EXECUTABLE="C:/Program Files (x86)/Poedit/GettextTools/bin/msgmerge.exe"
+          cmake -A ${{ matrix.cmake_arch }} -B build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} ${{ matrix.cmake_defines }} -DGETTEXT_MSGFMT_EXECUTABLE="C:/Program Files (x86)/Poedit/GettextTools/bin/msgfmt.exe" -DGETTEXT_MSGMERGE_EXECUTABLE="C:/Program Files (x86)/Poedit/GettextTools/bin/msgmerge.exe"
           cmake --build build --config ${{env.BUILD_TYPE}} --target tarball
         shell: cmd
 
