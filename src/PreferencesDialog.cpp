@@ -8,9 +8,10 @@
 
 #include "PreferencesDialog.h"
 #include "mayara_server_pi.h"
-#include "MayaraClient.h"
 
 #include <wx/spinctrl.h>
+#include <wx/url.h>
+#include <wx/sstream.h>
 
 using namespace mayara;
 
@@ -160,22 +161,63 @@ void PreferencesDialog::OnTestConnection(wxCommandEvent& event) {
     int port = m_port_ctrl->GetValue();
 
     m_status_text->SetLabel(_("Testing connection..."));
+    m_status_text->SetForegroundColour(*wxBLACK);
     Update();
+    wxYield();  // Process the UI update
 
-    MayaraClient client(host.ToStdString(), port, 5000);
-    auto ids = client.GetRadarIds();
+    // Use wxWidgets URL class for simple HTTP test (avoids IXWebSocket threading issues)
+    wxString url = wxString::Format("http://%s:%d/v2/api/radars", host, port);
 
-    if (client.IsConnected()) {
-        if (ids.empty()) {
-            m_status_text->SetLabel(_("Connected! No radars found."));
-        } else {
-            m_status_text->SetLabel(wxString::Format(
-                _("Connected! Found %zu radar(s)."), ids.size()));
+    try {
+        wxURL wxurl(url);
+        if (wxurl.GetError() != wxURL_NOERR) {
+            m_status_text->SetLabel(_("Invalid URL"));
+            m_status_text->SetForegroundColour(*wxRED);
+            Layout();
+            return;
         }
-        m_status_text->SetForegroundColour(*wxGREEN);
-    } else {
-        m_status_text->SetLabel(_("Connection failed: ") +
-                                wxString(client.GetLastError()));
+
+        wxurl.GetProtocol().SetTimeout(5);  // 5 second timeout
+
+        wxInputStream* stream = wxurl.GetInputStream();
+        if (!stream) {
+            m_status_text->SetLabel(_("Connection failed: Could not connect to server"));
+            m_status_text->SetForegroundColour(*wxRED);
+            Layout();
+            return;
+        }
+
+        wxStringOutputStream out;
+        stream->Read(out);
+        delete stream;
+
+        wxString response = out.GetString();
+        if (response.IsEmpty()) {
+            m_status_text->SetLabel(_("Connected but empty response"));
+            m_status_text->SetForegroundColour(wxColour(255, 165, 0));  // Orange
+        } else if (response.StartsWith("[")) {
+            // JSON array - count items
+            int count = 0;
+            for (size_t i = 0; i < response.Length(); i++) {
+                if (response[i] == '"') count++;
+            }
+            count = count / 2;  // Each string has 2 quotes
+            if (count == 0) {
+                m_status_text->SetLabel(_("Connected! No radars found."));
+            } else {
+                m_status_text->SetLabel(wxString::Format(
+                    _("Connected! Found %d radar(s)."), count));
+            }
+            m_status_text->SetForegroundColour(*wxGREEN);
+        } else {
+            m_status_text->SetLabel(_("Connected! Response: ") + response.Left(50));
+            m_status_text->SetForegroundColour(*wxGREEN);
+        }
+    } catch (const std::exception& e) {
+        m_status_text->SetLabel(_("Error: ") + wxString(e.what()));
+        m_status_text->SetForegroundColour(*wxRED);
+    } catch (...) {
+        m_status_text->SetLabel(_("Connection failed"));
         m_status_text->SetForegroundColour(*wxRED);
     }
 

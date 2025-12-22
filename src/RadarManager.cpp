@@ -36,11 +36,12 @@ void RadarManager::Start() {
     );
 
     m_running = true;
-    m_last_discovery = wxGetLocalTimeMillis();
+    // Set last_discovery to 0 so first Poll() triggers discovery
+    m_last_discovery = 0;
     m_last_reconnect_attempt = 0;
 
-    // Initial discovery
-    DoDiscovery();
+    // Don't do initial discovery here - let Poll() handle it
+    // This avoids IXWebSocket HTTP issues during plugin Init()
 }
 
 void RadarManager::Stop() {
@@ -70,6 +71,7 @@ void RadarManager::Poll() {
         // Discovery polling
         int interval = m_plugin->GetDiscoveryPollInterval() * 1000;
         if ((now - m_last_discovery).GetValue() >= interval) {
+            wxLogMessage("MaYaRa: Running discovery poll");
             DoDiscovery();
             m_last_discovery = now;
         }
@@ -77,6 +79,8 @@ void RadarManager::Poll() {
         // Reconnection attempts
         int interval = m_plugin->GetReconnectInterval() * 1000;
         if ((now - m_last_reconnect_attempt).GetValue() >= interval) {
+            wxLogMessage("MaYaRa: Attempting to connect to %s:%d",
+                m_plugin->GetServerHost(), m_plugin->GetServerPort());
             TryReconnect();
             m_last_reconnect_attempt = now;
         }
@@ -165,23 +169,20 @@ void RadarManager::TryReconnect() {
     auto ids = m_client->GetRadarIds();
 
     if (m_client->IsConnected()) {
+        wxLogMessage("MaYaRa: Connected! Found %zu radar(s)", ids.size());
         m_connected = true;
         DoDiscovery();
+    } else {
+        wxLogMessage("MaYaRa: Connection failed: %s", m_client->GetLastError());
     }
 }
 
 void RadarManager::ShowConnectionNotification(bool connected) {
     if (!connected && !m_notification_shown) {
-        // Show notification popup
-        wxMessageBox(
-            _("Cannot connect to mayara-server.\n\n"
-              "Please ensure mayara-server is running on ") +
-              wxString(m_plugin->GetServerHost()) + ":" +
-              wxString::Format("%d", m_plugin->GetServerPort()) +
-              _("\n\nThe plugin will keep trying to reconnect."),
-            _("MaYaRa Server"),
-            wxOK | wxICON_WARNING
-        );
+        // Don't show popup - it can cause crashes when called from timer context
+        // Just log the error and set the flag
+        wxLogMessage("MaYaRa Server: Cannot connect to %s:%d",
+            m_plugin->GetServerHost(), m_plugin->GetServerPort());
         m_notification_shown = true;
     }
 }

@@ -10,7 +10,8 @@
 #include "pi_common.h"
 
 #include "MayaraClient.h"
-#include <ixwebsocket/IXHttpClient.h>
+#include <wx/url.h>
+#include <wx/sstream.h>
 #include <nlohmann/json.hpp>
 
 using namespace mayara;
@@ -31,44 +32,55 @@ std::string MayaraClient::Request(const std::string& method,
                                    const std::string& path,
                                    const std::string& body)
 {
-    ix::HttpClient client;
+    // Use wxURL for HTTP requests (IXWebSocket HTTP crashes on Windows)
+    // Note: wxURL only supports GET, so PUT/POST/DELETE will fail
 
-    std::string url = "http://" + m_host + ":" + std::to_string(m_port) + path;
-
-    ix::HttpRequestArgsPtr args = client.createRequest();
-    args->connectTimeout = m_timeout_ms / 1000;
-    args->transferTimeout = m_timeout_ms / 1000;
-
-    ix::HttpResponsePtr response;
-
-    if (method == "GET") {
-        response = client.get(url, args);
-    } else if (method == "PUT") {
-        args->body = body;
-        args->extraHeaders["Content-Type"] = "application/json";
-        response = client.request(url, "PUT", body, args);
-    } else if (method == "POST") {
-        args->body = body;
-        args->extraHeaders["Content-Type"] = "application/json";
-        response = client.post(url, body, args);
-    } else if (method == "DELETE") {
-        response = client.request(url, "DELETE", "", args);
-    }
-
-    if (!response) {
+    if (method != "GET") {
+        // wxURL doesn't support PUT/POST/DELETE - would need wxHTTP or curl
         m_connected = false;
-        m_last_error = "Request failed";
+        m_last_error = "Only GET supported on Windows";
         return "";
     }
 
-    if (response->statusCode >= 200 && response->statusCode < 300) {
-        m_connected = true;
-        return response->body;
-    }
+    try {
+        wxString url = wxString::Format("http://%s:%d%s",
+            wxString(m_host), m_port, wxString(path));
 
-    m_connected = false;
-    m_last_error = "HTTP " + std::to_string(response->statusCode);
-    return "";
+        wxURL wxurl(url);
+        if (wxurl.GetError() != wxURL_NOERR) {
+            m_connected = false;
+            m_last_error = "Invalid URL";
+            return "";
+        }
+
+        // Use shorter timeout to avoid blocking UI (max 2 seconds)
+        int timeout = std::min(m_timeout_ms / 1000, 2);
+        wxurl.GetProtocol().SetTimeout(timeout);
+
+        wxInputStream* stream = wxurl.GetInputStream();
+        if (!stream) {
+            m_connected = false;
+            m_last_error = "Connection failed";
+            return "";
+        }
+
+        wxStringOutputStream out;
+        stream->Read(out);
+        delete stream;
+
+        wxString response = out.GetString();
+        m_connected = true;
+        return response.ToStdString();
+
+    } catch (const std::exception& e) {
+        m_connected = false;
+        m_last_error = std::string("Exception: ") + e.what();
+        return "";
+    } catch (...) {
+        m_connected = false;
+        m_last_error = "Unknown error";
+        return "";
+    }
 }
 
 std::vector<std::string> MayaraClient::GetRadarIds() {
