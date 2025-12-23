@@ -3,7 +3,7 @@
  * Copyright (c) 2025 MarineYachtRadar
  * License: MIT
  *
- * Radar control dialog for adjusting radar settings
+ * Radar control dialog - now capability-driven
  */
 
 #include "RadarControlDialog.h"
@@ -18,32 +18,31 @@ enum {
     ID_POWER_STANDBY,
     ID_POWER_TRANSMIT,
     ID_RANGE_CHOICE,
-    ID_GAIN_SLIDER,
-    ID_GAIN_AUTO,
-    ID_SEA_SLIDER,
-    ID_SEA_AUTO,
-    ID_RAIN_SLIDER,
     ID_REFRESH,
     ID_TIMER
 };
 
-// Common range values in meters
-static const double RANGE_VALUES[] = {
+// Fallback range values if capabilities don't provide them
+static const double FALLBACK_RANGES[] = {
     125, 250, 500, 750, 1000, 1500, 2000, 3000, 4000, 6000,
     8000, 12000, 16000, 24000, 36000, 48000, 64000, 96000
 };
-static const int NUM_RANGES = sizeof(RANGE_VALUES) / sizeof(RANGE_VALUES[0]);
+static const int NUM_FALLBACK_RANGES = sizeof(FALLBACK_RANGES) / sizeof(FALLBACK_RANGES[0]);
+
+// Helper to format range value
+static wxString FormatRange(double meters) {
+    if (meters < 1000) {
+        return wxString::Format("%.0f m", meters);
+    } else {
+        return wxString::Format("%.1f km", meters / 1000.0);
+    }
+}
 
 BEGIN_EVENT_TABLE(RadarControlDialog, wxDialog)
     EVT_BUTTON(ID_POWER_OFF, RadarControlDialog::OnPowerButton)
     EVT_BUTTON(ID_POWER_STANDBY, RadarControlDialog::OnPowerButton)
     EVT_BUTTON(ID_POWER_TRANSMIT, RadarControlDialog::OnPowerButton)
     EVT_CHOICE(ID_RANGE_CHOICE, RadarControlDialog::OnRangeChanged)
-    EVT_COMMAND_SCROLL(ID_GAIN_SLIDER, RadarControlDialog::OnGainChanged)
-    EVT_CHECKBOX(ID_GAIN_AUTO, RadarControlDialog::OnGainAutoChanged)
-    EVT_COMMAND_SCROLL(ID_SEA_SLIDER, RadarControlDialog::OnSeaChanged)
-    EVT_CHECKBOX(ID_SEA_AUTO, RadarControlDialog::OnSeaAutoChanged)
-    EVT_COMMAND_SCROLL(ID_RAIN_SLIDER, RadarControlDialog::OnRainChanged)
     EVT_BUTTON(ID_REFRESH, RadarControlDialog::OnRefresh)
     EVT_CLOSE(RadarControlDialog::OnClose)
     EVT_TIMER(ID_TIMER, RadarControlDialog::OnTimer)
@@ -53,28 +52,51 @@ RadarControlDialog::RadarControlDialog(wxWindow* parent,
                                        mayara_server_pi* plugin,
                                        RadarDisplay* radar)
     : wxDialog(parent, wxID_ANY,
-               wxString::Format(_("Radar Controls: %s"), radar->GetName()),
+               wxString::Format(_("Radar Controls: %s"), radar ? radar->GetName().c_str() : "Unknown"),
                wxDefaultPosition, wxDefaultSize,
                wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER)
     , m_plugin(plugin)
     , m_radar(radar)
     , m_client(nullptr)
+    , m_dynamic_panel(nullptr)
     , m_timer(nullptr)
     , m_updating_ui(false)
 {
-    auto* manager = plugin->GetRadarManager();
-    if (manager) {
-        m_client = manager->GetClient();
+    wxLogMessage("MaYaRa: RadarControlDialog ctor - entry");
+
+    if (!radar) {
+        wxLogMessage("MaYaRa: RadarControlDialog - radar is null!");
+        return;
     }
 
+    auto* manager = plugin->GetRadarManager();
+    wxLogMessage("MaYaRa: RadarControlDialog - manager=%p", (void*)manager);
+    if (manager) {
+        m_client = manager->GetClient();
+        wxLogMessage("MaYaRa: RadarControlDialog - client=%p", (void*)m_client);
+    }
+
+    // Fetch capabilities first
+    if (m_client) {
+        wxLogMessage("MaYaRa: RadarControlDialog - fetching capabilities for %s", radar->GetId().c_str());
+        m_capabilities = m_client->GetCapabilities(radar->GetId());
+        wxLogMessage("MaYaRa: Loaded capabilities for %s: %s %s, %u controls",
+                     radar->GetId().c_str(),
+                     m_capabilities.make.c_str(),
+                     m_capabilities.model.c_str(),
+                     (unsigned)m_capabilities.controls.size());
+    }
+
+    wxLogMessage("MaYaRa: RadarControlDialog - calling CreateControls");
     CreateControls();
+    wxLogMessage("MaYaRa: RadarControlDialog - calling RefreshState");
     RefreshState();
 
     // Start auto-refresh timer (every 2 seconds)
     m_timer = new wxTimer(this, ID_TIMER);
     m_timer->Start(2000);
 
-    SetMinSize(wxSize(350, 400));
+    SetMinSize(wxSize(380, 500));
     Fit();
     Centre();
 }
@@ -89,88 +111,40 @@ RadarControlDialog::~RadarControlDialog() {
 void RadarControlDialog::CreateControls() {
     wxBoxSizer* mainSizer = new wxBoxSizer(wxVERTICAL);
 
-    // Status
+    // Model and status info
+    wxString modelInfo = wxString::Format("%s %s",
+        m_capabilities.make.c_str(),
+        m_capabilities.model.c_str());
+    m_model_text = new wxStaticText(this, wxID_ANY, modelInfo);
+    wxFont boldFont = m_model_text->GetFont();
+    boldFont.SetWeight(wxFONTWEIGHT_BOLD);
+    m_model_text->SetFont(boldFont);
+    mainSizer->Add(m_model_text, 0, wxALL, 10);
+
     m_status_text = new wxStaticText(this, wxID_ANY, _("Status: Unknown"));
-    mainSizer->Add(m_status_text, 0, wxALL, 10);
+    mainSizer->Add(m_status_text, 0, wxLEFT | wxRIGHT | wxBOTTOM, 10);
 
-    // Power control
-    wxStaticBoxSizer* powerBox = new wxStaticBoxSizer(
-        wxHORIZONTAL, this, _("Power"));
+    // Power controls (always present, special UI)
+    CreatePowerControls(mainSizer);
 
-    m_power_off_btn = new wxButton(this, ID_POWER_OFF, _("Off"));
-    m_power_standby_btn = new wxButton(this, ID_POWER_STANDBY, _("Standby"));
-    m_power_transmit_btn = new wxButton(this, ID_POWER_TRANSMIT, _("Transmit"));
+    // Range controls (always present, special UI with radar-specific ranges)
+    CreateRangeControls(mainSizer);
 
-    powerBox->Add(m_power_off_btn, 1, wxALL, 5);
-    powerBox->Add(m_power_standby_btn, 1, wxALL, 5);
-    powerBox->Add(m_power_transmit_btn, 1, wxALL, 5);
+    // Dynamic control panel for all other controls from capabilities
+    // Filter out "power" and "range" as they have special handling above
+    CapabilityManifest filteredCaps = m_capabilities;
+    filteredCaps.controls.erase(
+        std::remove_if(filteredCaps.controls.begin(), filteredCaps.controls.end(),
+            [](const ControlDefinition& def) {
+                return def.id == "power" || def.id == "range";
+            }),
+        filteredCaps.controls.end()
+    );
 
-    mainSizer->Add(powerBox, 0, wxEXPAND | wxLEFT | wxRIGHT, 10);
-
-    // Range control
-    wxStaticBoxSizer* rangeBox = new wxStaticBoxSizer(
-        wxHORIZONTAL, this, _("Range"));
-
-    wxArrayString rangeChoices;
-    for (int i = 0; i < NUM_RANGES; i++) {
-        double range = RANGE_VALUES[i];
-        if (range < 1000) {
-            rangeChoices.Add(wxString::Format("%.0f m", range));
-        } else {
-            rangeChoices.Add(wxString::Format("%.1f km", range / 1000));
-        }
+    if (!filteredCaps.controls.empty()) {
+        m_dynamic_panel = new DynamicControlPanel(this, m_client, m_radar->GetId(), filteredCaps);
+        mainSizer->Add(m_dynamic_panel, 1, wxEXPAND | wxLEFT | wxRIGHT, 5);
     }
-    m_range_choice = new wxChoice(this, ID_RANGE_CHOICE, wxDefaultPosition,
-                                   wxDefaultSize, rangeChoices);
-    rangeBox->Add(m_range_choice, 1, wxALL, 5);
-
-    mainSizer->Add(rangeBox, 0, wxEXPAND | wxLEFT | wxRIGHT, 10);
-
-    // Gain control
-    wxStaticBoxSizer* gainBox = new wxStaticBoxSizer(
-        wxVERTICAL, this, _("Gain"));
-
-    wxBoxSizer* gainRow = new wxBoxSizer(wxHORIZONTAL);
-    m_gain_auto_checkbox = new wxCheckBox(this, ID_GAIN_AUTO, _("Auto"));
-    m_gain_slider = new wxSlider(this, ID_GAIN_SLIDER, 50, 0, 100);
-    m_gain_value_text = new wxStaticText(this, wxID_ANY, "50%",
-                                          wxDefaultPosition, wxSize(40, -1));
-    gainRow->Add(m_gain_auto_checkbox, 0, wxALL | wxALIGN_CENTER_VERTICAL, 5);
-    gainRow->Add(m_gain_slider, 1, wxALL, 5);
-    gainRow->Add(m_gain_value_text, 0, wxALL | wxALIGN_CENTER_VERTICAL, 5);
-    gainBox->Add(gainRow, 0, wxEXPAND);
-
-    mainSizer->Add(gainBox, 0, wxEXPAND | wxLEFT | wxRIGHT, 10);
-
-    // Sea clutter control
-    wxStaticBoxSizer* seaBox = new wxStaticBoxSizer(
-        wxVERTICAL, this, _("Sea Clutter"));
-
-    wxBoxSizer* seaRow = new wxBoxSizer(wxHORIZONTAL);
-    m_sea_auto_checkbox = new wxCheckBox(this, ID_SEA_AUTO, _("Auto"));
-    m_sea_slider = new wxSlider(this, ID_SEA_SLIDER, 50, 0, 100);
-    m_sea_value_text = new wxStaticText(this, wxID_ANY, "50%",
-                                         wxDefaultPosition, wxSize(40, -1));
-    seaRow->Add(m_sea_auto_checkbox, 0, wxALL | wxALIGN_CENTER_VERTICAL, 5);
-    seaRow->Add(m_sea_slider, 1, wxALL, 5);
-    seaRow->Add(m_sea_value_text, 0, wxALL | wxALIGN_CENTER_VERTICAL, 5);
-    seaBox->Add(seaRow, 0, wxEXPAND);
-
-    mainSizer->Add(seaBox, 0, wxEXPAND | wxLEFT | wxRIGHT, 10);
-
-    // Rain clutter control
-    wxStaticBoxSizer* rainBox = new wxStaticBoxSizer(
-        wxVERTICAL, this, _("Rain Clutter"));
-
-    wxBoxSizer* rainRow = new wxBoxSizer(wxHORIZONTAL);
-    m_rain_slider = new wxSlider(this, ID_RAIN_SLIDER, 0, 0, 100);
-    m_rain_value_text = new wxStaticText(this, wxID_ANY, "0%",
-                                          wxDefaultPosition, wxSize(40, -1));
-    rainRow->Add(m_rain_slider, 1, wxALL, 5);
-    rainRow->Add(m_rain_value_text, 0, wxALL | wxALIGN_CENTER_VERTICAL, 5);
-    rainBox->Add(rainRow, 0, wxEXPAND);
-
-    mainSizer->Add(rainBox, 0, wxEXPAND | wxLEFT | wxRIGHT, 10);
 
     // Statistics
     m_spokes_text = new wxStaticText(this, wxID_ANY, _("Spokes received: 0"));
@@ -181,6 +155,76 @@ void RadarControlDialog::CreateControls() {
     mainSizer->Add(refreshBtn, 0, wxALL | wxALIGN_CENTER, 10);
 
     SetSizer(mainSizer);
+}
+
+void RadarControlDialog::CreatePowerControls(wxSizer* parent) {
+    wxStaticBoxSizer* powerBox = new wxStaticBoxSizer(wxHORIZONTAL, this, _("Power"));
+
+    // Check which power values are settable (not read-only) from capabilities
+    bool canSetOff = false;
+    bool canSetStandby = true;  // Default to true for fallback
+    bool canSetTransmit = true;
+
+    const ControlDefinition* powerDef = m_capabilities.getControl("power");
+    if (powerDef && !powerDef->values.empty()) {
+        // Reset to false, only enable if explicitly settable
+        canSetOff = false;
+        canSetStandby = false;
+        canSetTransmit = false;
+
+        for (const auto& val : powerDef->values) {
+            if (!val.readOnly) {
+                if (val.value == "off") canSetOff = true;
+                else if (val.value == "standby") canSetStandby = true;
+                else if (val.value == "transmit") canSetTransmit = true;
+            }
+        }
+    }
+
+    // Only create buttons for settable power states
+    m_power_off_btn = nullptr;
+    m_power_standby_btn = nullptr;
+    m_power_transmit_btn = nullptr;
+
+    if (canSetOff) {
+        m_power_off_btn = new wxButton(this, ID_POWER_OFF, _("Off"));
+        powerBox->Add(m_power_off_btn, 1, wxALL, 5);
+    }
+    if (canSetStandby) {
+        m_power_standby_btn = new wxButton(this, ID_POWER_STANDBY, _("Standby"));
+        powerBox->Add(m_power_standby_btn, 1, wxALL, 5);
+    }
+    if (canSetTransmit) {
+        m_power_transmit_btn = new wxButton(this, ID_POWER_TRANSMIT, _("Transmit"));
+        powerBox->Add(m_power_transmit_btn, 1, wxALL, 5);
+    }
+
+    parent->Add(powerBox, 0, wxEXPAND | wxLEFT | wxRIGHT, 10);
+}
+
+void RadarControlDialog::CreateRangeControls(wxSizer* parent) {
+    wxStaticBoxSizer* rangeBox = new wxStaticBoxSizer(wxHORIZONTAL, this, _("Range"));
+
+    // Use supported ranges from capabilities if available
+    m_supported_ranges = m_capabilities.characteristics.supportedRanges;
+
+    // If no ranges from capabilities, use fallback
+    if (m_supported_ranges.empty()) {
+        for (int i = 0; i < NUM_FALLBACK_RANGES; i++) {
+            m_supported_ranges.push_back(static_cast<uint32_t>(FALLBACK_RANGES[i]));
+        }
+    }
+
+    wxArrayString rangeChoices;
+    for (uint32_t range : m_supported_ranges) {
+        rangeChoices.Add(FormatRange(static_cast<double>(range)));
+    }
+
+    m_range_choice = new wxChoice(this, ID_RANGE_CHOICE, wxDefaultPosition,
+                                   wxDefaultSize, rangeChoices);
+
+    rangeBox->Add(m_range_choice, 1, wxALL, 5);
+    parent->Add(rangeBox, 0, wxEXPAND | wxLEFT | wxRIGHT, 10);
 }
 
 void RadarControlDialog::RefreshState() {
@@ -203,41 +247,31 @@ void RadarControlDialog::UpdateUI(const RadarState& state) {
     }
     m_status_text->SetLabel(statusStr);
 
-    // Power buttons
-    m_power_off_btn->Enable(state.status != RadarStatus::Off);
-    m_power_standby_btn->Enable(state.status != RadarStatus::Standby);
-    m_power_transmit_btn->Enable(state.status != RadarStatus::Transmit);
+    // Power buttons - enable all except current state (if button exists)
+    if (m_power_off_btn) m_power_off_btn->Enable(state.status != RadarStatus::Off);
+    if (m_power_standby_btn) m_power_standby_btn->Enable(state.status != RadarStatus::Standby);
+    if (m_power_transmit_btn) m_power_transmit_btn->Enable(state.status != RadarStatus::Transmit);
 
-    // Range
-    double range = state.rangeMeters;
-    int rangeIdx = 0;
-    for (int i = 0; i < NUM_RANGES; i++) {
-        if (range >= RANGE_VALUES[i]) {
-            rangeIdx = i;
-        }
-    }
-    m_range_choice->SetSelection(rangeIdx);
+    // Range - find closest match in supported ranges
+    if (!m_supported_ranges.empty()) {
+        double range = state.rangeMeters;
+        int rangeIdx = 0;
+        double minDiff = std::abs(static_cast<double>(m_supported_ranges[0]) - range);
 
-    // Controls
-    auto updateControl = [&](const std::string& name,
-                              wxSlider* slider,
-                              wxCheckBox* autoBox,
-                              wxStaticText* valueText) {
-        if (state.controls.count(name)) {
-            auto& cv = state.controls.at(name);
-            slider->SetValue(cv.value);
-            valueText->SetLabel(wxString::Format("%d%%", cv.value));
-            if (autoBox) {
-                bool isAuto = (cv.mode == "auto");
-                autoBox->SetValue(isAuto);
-                slider->Enable(!isAuto);
+        for (size_t i = 1; i < m_supported_ranges.size(); i++) {
+            double diff = std::abs(static_cast<double>(m_supported_ranges[i]) - range);
+            if (diff < minDiff) {
+                minDiff = diff;
+                rangeIdx = static_cast<int>(i);
             }
         }
-    };
+        m_range_choice->SetSelection(rangeIdx);
+    }
 
-    updateControl("gain", m_gain_slider, m_gain_auto_checkbox, m_gain_value_text);
-    updateControl("sea", m_sea_slider, m_sea_auto_checkbox, m_sea_value_text);
-    updateControl("rain", m_rain_slider, nullptr, m_rain_value_text);
+    // Update dynamic panel
+    if (m_dynamic_panel) {
+        m_dynamic_panel->UpdateFromState(state);
+    }
 
     m_updating_ui = false;
 }
@@ -253,66 +287,24 @@ void RadarControlDialog::OnPowerButton(wxCommandEvent& event) {
         default: return;
     }
 
+    wxLogMessage("MaYaRa: Setting power to %d", static_cast<int>(status));
     m_client->SetPower(m_radar->GetId(), status);
-    RefreshState();
+
+    // Immediate feedback (if button exists)
+    if (m_power_off_btn) m_power_off_btn->Enable(status != RadarStatus::Off);
+    if (m_power_standby_btn) m_power_standby_btn->Enable(status != RadarStatus::Standby);
+    if (m_power_transmit_btn) m_power_transmit_btn->Enable(status != RadarStatus::Transmit);
 }
 
 void RadarControlDialog::OnRangeChanged(wxCommandEvent& event) {
     if (m_updating_ui || !m_client || !m_radar) return;
 
     int idx = m_range_choice->GetSelection();
-    if (idx >= 0 && idx < NUM_RANGES) {
-        m_client->SetRange(m_radar->GetId(), RANGE_VALUES[idx]);
+    if (idx >= 0 && idx < static_cast<int>(m_supported_ranges.size())) {
+        double rangeMeters = static_cast<double>(m_supported_ranges[idx]);
+        wxLogMessage("MaYaRa: Setting range to %.0f m", rangeMeters);
+        m_client->SetRange(m_radar->GetId(), rangeMeters);
     }
-}
-
-void RadarControlDialog::OnGainChanged(wxScrollEvent& WXUNUSED(event)) {
-    if (m_updating_ui || !m_client || !m_radar) return;
-
-    int value = m_gain_slider->GetValue();
-    m_gain_value_text->SetLabel(wxString::Format("%d%%", value));
-
-    bool autoMode = m_gain_auto_checkbox->GetValue();
-    m_client->SetGain(m_radar->GetId(), value, autoMode);
-}
-
-void RadarControlDialog::OnGainAutoChanged(wxCommandEvent& event) {
-    if (m_updating_ui || !m_client || !m_radar) return;
-
-    bool autoMode = m_gain_auto_checkbox->GetValue();
-    m_gain_slider->Enable(!autoMode);
-
-    int value = m_gain_slider->GetValue();
-    m_client->SetGain(m_radar->GetId(), value, autoMode);
-}
-
-void RadarControlDialog::OnSeaChanged(wxScrollEvent& WXUNUSED(event)) {
-    if (m_updating_ui || !m_client || !m_radar) return;
-
-    int value = m_sea_slider->GetValue();
-    m_sea_value_text->SetLabel(wxString::Format("%d%%", value));
-
-    bool autoMode = m_sea_auto_checkbox->GetValue();
-    m_client->SetSea(m_radar->GetId(), value, autoMode);
-}
-
-void RadarControlDialog::OnSeaAutoChanged(wxCommandEvent& event) {
-    if (m_updating_ui || !m_client || !m_radar) return;
-
-    bool autoMode = m_sea_auto_checkbox->GetValue();
-    m_sea_slider->Enable(!autoMode);
-
-    int value = m_sea_slider->GetValue();
-    m_client->SetSea(m_radar->GetId(), value, autoMode);
-}
-
-void RadarControlDialog::OnRainChanged(wxScrollEvent& WXUNUSED(event)) {
-    if (m_updating_ui || !m_client || !m_radar) return;
-
-    int value = m_rain_slider->GetValue();
-    m_rain_value_text->SetLabel(wxString::Format("%d%%", value));
-
-    m_client->SetRain(m_radar->GetId(), value);
 }
 
 void RadarControlDialog::OnRefresh(wxCommandEvent& event) {
@@ -329,7 +321,6 @@ void RadarControlDialog::OnClose(wxCloseEvent& event) {
 void RadarControlDialog::OnTimer(wxTimerEvent& event) {
     // Update statistics
     if (m_radar && m_radar->IsReceiving()) {
-        // TODO: Get actual spoke count from receiver
         m_spokes_text->SetLabel(_("Spokes received: Active"));
     } else {
         m_spokes_text->SetLabel(_("Spokes received: Not connected"));

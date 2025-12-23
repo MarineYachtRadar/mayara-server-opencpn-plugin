@@ -71,6 +71,7 @@ set(SRC
   include/RadarPPIRenderer.h
   include/RadarCanvas.h
   include/RadarControlDialog.h
+  include/DynamicControlPanel.h
   include/PreferencesDialog.h
   include/RadarDisplay.h
   include/RadarManager.h
@@ -87,6 +88,7 @@ set(SRC
   src/RadarPPIRenderer.cpp
   src/RadarCanvas.cpp
   src/RadarControlDialog.cpp
+  src/DynamicControlPanel.cpp
   src/PreferencesDialog.cpp
   src/RadarDisplay.cpp
   src/RadarManager.cpp

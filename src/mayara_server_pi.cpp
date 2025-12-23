@@ -17,6 +17,7 @@
 #include "RadarManager.h"
 #include "RadarDisplay.h"
 #include "RadarOverlayRenderer.h"
+#include "RadarControlDialog.h"
 #include "PreferencesDialog.h"
 #include "icons.h"
 
@@ -25,7 +26,9 @@
 #include <string>
 
 // Timer ID
-enum { ID_TIMER = wxID_HIGHEST + 1 };
+enum {
+    ID_TIMER = wxID_HIGHEST + 1
+};
 
 // Default settings (copied from pi_common.h to avoid include)
 #define DEFAULT_SERVER_HOST "localhost"
@@ -103,6 +106,7 @@ public:
 
 private:
     void OnTimerNotify(wxTimerEvent& event);
+    void ShowRadarControlDialog();
 
     wxWindow* m_parent_window;
     wxFileConfig* m_config;
@@ -186,14 +190,14 @@ int mayara_server_pi::Init() {
     // Initialize icons
     mayara::InitializeIcons();
 
-    // Add toolbar button - starts disabled (gray)
+    // Add toolbar button - overlay toggle (starts disabled/gray)
     wxBitmap* icon = mayara::GetToolbarIcon(mayara::IconState::Disconnected);
     m_tool_id = InsertPlugInTool(
         _T(""),                 // Label
         icon, icon,             // Normal and rollover bitmaps
         wxITEM_CHECK,           // Check item (toggle on/off)
         _("MaYaRa Radar"),      // Short help
-        _("Toggle radar overlay"), // Long help
+        _("Click to connect, right-click for controls"), // Long help
         nullptr,                // Client data
         -1,                     // Position
         0,                      // Tool selection
@@ -240,7 +244,18 @@ wxString mayara_server_pi::GetLongDescription() {
 }
 
 void mayara_server_pi::OnToolbarToolCallback(int id) {
+    wxLogMessage("MaYaRa: OnToolbarToolCallback id=%d, m_tool_id=%d", id, m_tool_id);
     if (id == m_tool_id) {
+        wxLogMessage("MaYaRa: Toolbar match, overlay=%d, manager=%p",
+                     m_show_overlay, (void*)m_radar_manager.get());
+        // If already ON and connected, show control dialog instead of toggling off
+        if (m_show_overlay && m_radar_manager && m_radar_manager->IsConnected()) {
+            wxLogMessage("MaYaRa: Already connected, showing controls");
+            ShowRadarControlDialog();
+            return;
+        }
+
+        // Toggle overlay on/off
         m_show_overlay = !m_show_overlay;
         SetToolbarItemState(id, m_show_overlay);
 
@@ -272,6 +287,31 @@ void mayara_server_pi::OnToolbarToolCallback(int id) {
 
         SaveConfig();
     }
+}
+
+void mayara_server_pi::ShowRadarControlDialog() {
+    wxLogMessage("MaYaRa: ShowRadarControlDialog - entry");
+    if (!m_radar_manager) {
+        wxLogMessage("MaYaRa: ShowRadarControlDialog - no radar manager");
+        return;
+    }
+
+    wxLogMessage("MaYaRa: ShowRadarControlDialog - getting active radars");
+    auto radars = m_radar_manager->GetActiveRadars();
+    if (radars.empty()) {
+        wxLogMessage("MaYaRa: No active radars to control");
+        return;
+    }
+
+    wxLogMessage("MaYaRa: ShowRadarControlDialog - have %u radars, parent=%p",
+                 (unsigned)radars.size(), (void*)m_parent_window);
+
+    // Show dialog for first radar (could extend to show selection if multiple)
+    wxLogMessage("MaYaRa: ShowRadarControlDialog - creating dialog");
+    mayara::RadarControlDialog dlg(m_parent_window, this, radars[0]);
+    wxLogMessage("MaYaRa: ShowRadarControlDialog - showing modal");
+    dlg.ShowModal();
+    wxLogMessage("MaYaRa: ShowRadarControlDialog - done");
 }
 
 void mayara_server_pi::SetToolbarItemState(int id, bool enable) {
@@ -321,58 +361,116 @@ bool mayara_server_pi::RenderGLOverlayMultiCanvas(
     static int log_counter = 0;
     log_counter++;
 
-    if (!m_show_overlay) return false;
+    // Log first 5 renders AND every 100 frames
+    bool do_log = (log_counter <= 5) || (log_counter % 100 == 0);
 
-    // Log diagnostics every 100 frames (about every 10 seconds at 10Hz)
-    bool do_log = (log_counter % 100 == 0);
-
-    if (!m_position_valid) {
-        if (do_log) wxLogMessage("MaYaRa: No position fix yet");
-        return false;
-    }
-    if (!m_radar_manager) {
-        if (do_log) wxLogMessage("MaYaRa: No radar manager");
-        return false;
-    }
-    if (!m_radar_manager->IsConnected()) {
-        if (do_log) wxLogMessage("MaYaRa: Not connected to server");
-        return false;
-    }
-
-    auto radars = m_radar_manager->GetActiveRadars();
-    if (do_log) wxLogMessage("MaYaRa: Rendering overlay, %zu active radar(s)", radars.size());
-
-    for (auto* radar : radars) {
-        if (!radar) continue;
-
-        RadarStatus status = radar->GetStatus();
-        if (do_log) wxLogMessage("MaYaRa: Radar status=%d (Transmit=2)", (int)status);
-
-        if (status != RadarStatus::Transmit) continue;
-
-        auto* renderer = radar->GetOverlayRenderer();
-        if (!renderer) {
-            if (do_log) wxLogMessage("MaYaRa: No overlay renderer");
-            continue;
-        }
-        if (!renderer->IsInitialized()) {
-            if (do_log) wxLogMessage("MaYaRa: Renderer not initialized");
-            continue;
+    try {
+        if (log_counter <= 5) {
+            wxLogMessage("MaYaRa: RenderGLOverlay #%d entry, overlay=%d, vp=%p",
+                         log_counter, m_show_overlay, (void*)vp);
+            wxLog::FlushActive();
         }
 
-        if (do_log) wxLogMessage("MaYaRa: Drawing overlay at range %.0fm", radar->GetRangeMeters());
+        if (!m_show_overlay) return false;
 
-        renderer->UpdateTexture(radar->GetSpokeBuffer());
-        renderer->DrawOverlay(
-            pcontext,
-            vp,
-            radar->GetRangeMeters(),
-            m_own_position,
-            m_heading
-        );
+        if (!m_position_valid) {
+            if (do_log) wxLogMessage("MaYaRa: No position fix yet");
+            return false;
+        }
+        if (!m_radar_manager) {
+            if (do_log) wxLogMessage("MaYaRa: No radar manager");
+            return false;
+        }
+        if (!m_radar_manager->IsConnected()) {
+            if (do_log) wxLogMessage("MaYaRa: Not connected to server");
+            return false;
+        }
+
+        if (do_log) wxLogMessage("MaYaRa: RenderGLOverlay - getting active radars");
+        auto radars = m_radar_manager->GetActiveRadars();
+        if (do_log) {
+            wxLogMessage("MaYaRa: Got %u active radar(s)", (unsigned)radars.size());
+            wxLog::FlushActive();
+        }
+
+        for (auto* radar : radars) {
+            if (!radar) {
+                if (do_log) wxLogMessage("MaYaRa: Skipping null radar");
+                continue;
+            }
+
+            if (do_log) {
+                wxLogMessage("MaYaRa: Processing radar %s", radar->GetId().c_str());
+                wxLog::FlushActive();
+            }
+            RadarStatus status = radar->GetStatus();
+            if (do_log) {
+                wxLogMessage("MaYaRa: Radar status=%d (Transmit=2)", (int)status);
+                wxLog::FlushActive();
+            }
+
+            // Skip if not transmitting - radar loop continues but no overlay drawn
+            if (status != RadarStatus::Transmit) continue;
+
+            // NOTE: Don't start spoke receiver here - it's started from OnTimerNotify
+            // to avoid threading issues with IXWebSocket on OpenGL thread
+
+            if (do_log) {
+                wxLogMessage("MaYaRa: Getting overlay renderer");
+                wxLog::FlushActive();
+            }
+            auto* renderer = radar->GetOverlayRenderer();
+            if (do_log) {
+                wxLogMessage("MaYaRa: GetOverlayRenderer returned %p", (void*)renderer);
+                wxLog::FlushActive();
+            }
+            if (!renderer) {
+                if (do_log) wxLogMessage("MaYaRa: No overlay renderer");
+                continue;
+            }
+
+            // TEMPORARY: Return early - got renderer but skip OpenGL init/rendering
+            if (do_log) {
+                wxLogMessage("MaYaRa: Got renderer=%p, returning early for debug", (void*)renderer);
+                wxLog::FlushActive();
+            }
+            return false;
+
+            // Initialize renderer on first use (when GL context is active)
+            if (!renderer->IsInitialized()) {
+                if (do_log) wxLogMessage("MaYaRa: Initializing renderer");
+                renderer->Init(radar->GetSpokesPerRevolution(), radar->GetMaxSpokeLength());
+                if (do_log) wxLogMessage("MaYaRa: Renderer Init() returned");
+            }
+            if (!renderer->IsInitialized()) {
+                if (do_log) wxLogMessage("MaYaRa: Renderer init failed");
+                continue;
+            }
+
+            if (do_log) wxLogMessage("MaYaRa: Drawing overlay at range %.0fm", radar->GetRangeMeters());
+
+            if (do_log) wxLogMessage("MaYaRa: Calling UpdateTexture");
+            renderer->UpdateTexture(radar->GetSpokeBuffer());
+            if (do_log) wxLogMessage("MaYaRa: Calling DrawOverlay");
+            renderer->DrawOverlay(
+                pcontext,
+                vp,
+                radar->GetRangeMeters(),
+                m_own_position,
+                m_heading
+            );
+            if (do_log) wxLogMessage("MaYaRa: DrawOverlay returned");
+        }
+
+        if (do_log) wxLogMessage("MaYaRa: RenderGLOverlay complete");
+        return true;
+    } catch (const std::exception& e) {
+        wxLogMessage("MaYaRa: RenderGLOverlay EXCEPTION: %s", e.what());
+        return false;
+    } catch (...) {
+        wxLogMessage("MaYaRa: RenderGLOverlay UNKNOWN EXCEPTION");
+        return false;
     }
-
-    return true;
 }
 
 void mayara_server_pi::SetPositionFixEx(PlugIn_Position_Fix_Ex& pfix) {
@@ -384,12 +482,58 @@ void mayara_server_pi::SetPositionFixEx(PlugIn_Position_Fix_Ex& pfix) {
 }
 
 void mayara_server_pi::OnTimerNotify(wxTimerEvent& event) {
-    if (m_radar_manager) {
-        m_radar_manager->Poll();
+    static int timer_count = 0;
+    timer_count++;
+    if (timer_count <= 3) {
+        wxLogMessage("MaYaRa: OnTimerNotify #%d", timer_count);
     }
+
+    if (m_radar_manager) {
+        if (timer_count <= 3) wxLogMessage("MaYaRa: Calling Poll");
+        m_radar_manager->Poll();
+
+        // DISABLED: Spoke receiver causes crash in IXWebSocket constructor on Windows
+        // TODO: Fix IXWebSocket linking/initialization issue
+        // For now, just test the control dialog without spoke streaming
+        /*
+        if (m_show_overlay && m_radar_manager->IsConnected()) {
+            auto radars = m_radar_manager->GetActiveRadars();
+            for (auto* radar : radars) {
+                if (radar && radar->GetStatus() == RadarStatus::Transmit && !radar->IsReceiving()) {
+                    if (timer_count <= 5) {
+                        wxLogMessage("MaYaRa: Starting spoke receiver for %s from timer", radar->GetId().c_str());
+                        wxLog::FlushActive();
+                    }
+                    radar->Start();
+                    if (timer_count <= 5) {
+                        wxLogMessage("MaYaRa: Spoke receiver started");
+                        wxLog::FlushActive();
+                    }
+                }
+            }
+        }
+        */
+    }
+    if (timer_count <= 3) wxLogMessage("MaYaRa: Calling UpdateToolbarIcon");
     UpdateToolbarIcon();
     if (m_show_overlay && m_radar_manager && m_radar_manager->IsConnected()) {
-        RequestRefresh(GetOCPNCanvasWindow());
+        wxWindow* canvas = GetOCPNCanvasWindow();
+        if (timer_count <= 3) wxLogMessage("MaYaRa: Canvas window=%p", (void*)canvas);
+        if (canvas) {
+            if (timer_count <= 3) {
+                wxLogMessage("MaYaRa: Requesting refresh");
+                wxLog::FlushActive();
+            }
+            RequestRefresh(canvas);
+            if (timer_count <= 3) {
+                wxLogMessage("MaYaRa: Refresh requested OK");
+                wxLog::FlushActive();
+            }
+        }
+    }
+    if (timer_count <= 3) {
+        wxLogMessage("MaYaRa: OnTimerNotify #%d complete", timer_count);
+        wxLog::FlushActive();
     }
 }
 

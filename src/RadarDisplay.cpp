@@ -27,18 +27,16 @@ RadarDisplay::RadarDisplay(mayara_server_pi* plugin,
     , m_max_spoke_length(info.maxSpokeLength > 0 ? info.maxSpokeLength : 512)
     , m_ppi_window(nullptr)
 {
-    // Create spoke buffer
+    // Create spoke buffer (no OpenGL needed)
     m_spoke_buffer = std::make_unique<SpokeBuffer>(
         m_spokes_per_revolution,
         m_max_spoke_length
     );
 
-    // Create renderers
+    // Create renderers but DON'T initialize OpenGL yet
+    // OpenGL init must happen during rendering when GL context is active
     m_overlay_renderer = std::make_unique<RadarOverlayRenderer>();
-    m_overlay_renderer->Init(m_spokes_per_revolution, m_max_spoke_length);
-
     m_ppi_renderer = std::make_unique<RadarPPIRenderer>();
-    m_ppi_renderer->Init(m_spokes_per_revolution, m_max_spoke_length);
 }
 
 RadarDisplay::~RadarDisplay() {
@@ -46,23 +44,57 @@ RadarDisplay::~RadarDisplay() {
 }
 
 void RadarDisplay::Start() {
-    if (m_receiver) return;  // Already started
+    try {
+        wxLogMessage("MaYaRa: RadarDisplay::Start() entry, receiver=%p", (void*)m_receiver.get());
+        wxLog::FlushActive();
 
-    // Get WebSocket URL from plugin's client
-    auto* manager = m_plugin->GetRadarManager();
-    if (!manager || !manager->GetClient()) return;
-
-    std::string url = manager->GetClient()->GetSpokeStreamUrl(m_id);
-
-    // Create receiver with callback
-    m_receiver = std::make_unique<SpokeReceiver>(
-        url,
-        [this](const SpokeData& spoke) {
-            OnSpokeReceived(spoke);
+        if (m_receiver) {
+            wxLogMessage("MaYaRa: RadarDisplay::Start() - already started");
+            return;  // Already started
         }
-    );
 
-    m_receiver->Start();
+        // Get WebSocket URL from plugin's client
+        wxLogMessage("MaYaRa: RadarDisplay::Start() - getting manager");
+        wxLog::FlushActive();
+        auto* manager = m_plugin->GetRadarManager();
+        wxLogMessage("MaYaRa: RadarDisplay::Start() - manager=%p", (void*)manager);
+        wxLog::FlushActive();
+
+        if (!manager || !manager->GetClient()) {
+            wxLogMessage("MaYaRa: RadarDisplay::Start() - no manager or client");
+            return;
+        }
+
+        wxLogMessage("MaYaRa: RadarDisplay::Start() - getting spoke URL for %s", m_id.c_str());
+        wxLog::FlushActive();
+        std::string url = manager->GetClient()->GetSpokeStreamUrl(m_id);
+        wxLogMessage("MaYaRa: RadarDisplay::Start() - URL: %s", url.c_str());
+        wxLog::FlushActive();
+
+        // Create receiver with callback
+        wxLogMessage("MaYaRa: RadarDisplay::Start() - creating SpokeReceiver");
+        wxLog::FlushActive();
+        m_receiver = std::make_unique<SpokeReceiver>(
+            url,
+            [this](const SpokeData& spoke) {
+                OnSpokeReceived(spoke);
+            }
+        );
+        wxLogMessage("MaYaRa: RadarDisplay::Start() - SpokeReceiver created");
+        wxLog::FlushActive();
+
+        wxLogMessage("MaYaRa: RadarDisplay::Start() - calling m_receiver->Start()");
+        wxLog::FlushActive();
+        m_receiver->Start();
+        wxLogMessage("MaYaRa: RadarDisplay::Start() - complete");
+        wxLog::FlushActive();
+    } catch (const std::exception& e) {
+        wxLogMessage("MaYaRa: RadarDisplay::Start() EXCEPTION: %s", e.what());
+        wxLog::FlushActive();
+    } catch (...) {
+        wxLogMessage("MaYaRa: RadarDisplay::Start() UNKNOWN EXCEPTION");
+        wxLog::FlushActive();
+    }
 }
 
 void RadarDisplay::Stop() {
@@ -75,18 +107,18 @@ void RadarDisplay::Stop() {
 void RadarDisplay::UpdateCapabilities(const CapabilityManifest& caps) {
     wxCriticalSectionLocker lock(m_lock);
 
-    if (caps.spokesPerRevolution > 0 && caps.spokesPerRevolution != m_spokes_per_revolution) {
-        m_spokes_per_revolution = caps.spokesPerRevolution;
+    if (caps.spokesPerRevolution() > 0 && caps.spokesPerRevolution() != m_spokes_per_revolution) {
+        m_spokes_per_revolution = caps.spokesPerRevolution();
     }
-    if (caps.maxSpokeLength > 0 && caps.maxSpokeLength != m_max_spoke_length) {
-        m_max_spoke_length = caps.maxSpokeLength;
+    if (caps.maxSpokeLength() > 0 && caps.maxSpokeLength() != m_max_spoke_length) {
+        m_max_spoke_length = caps.maxSpokeLength();
     }
 
     // Update info
     m_info.brand = caps.make;
     m_info.model = caps.model;
-    m_info.spokesPerRevolution = caps.spokesPerRevolution;
-    m_info.maxSpokeLength = caps.maxSpokeLength;
+    m_info.spokesPerRevolution = caps.spokesPerRevolution();
+    m_info.maxSpokeLength = caps.maxSpokeLength();
 }
 
 void RadarDisplay::UpdateState(const RadarState& state) {

@@ -80,7 +80,7 @@ void RadarManager::Poll() {
         int interval = m_plugin->GetReconnectInterval() * 1000;
         if ((now - m_last_reconnect_attempt).GetValue() >= interval) {
             wxLogMessage("MaYaRa: Attempting to connect to %s:%d",
-                m_plugin->GetServerHost(), m_plugin->GetServerPort());
+                m_plugin->GetServerHost().c_str(), m_plugin->GetServerPort());
             TryReconnect();
             m_last_reconnect_attempt = now;
         }
@@ -92,7 +92,10 @@ void RadarManager::DoDiscovery() {
 
     auto radars = m_client->GetRadars();
 
+    wxLogMessage("MaYaRa: DoDiscovery got %u radar(s) from server", (unsigned)radars.size());
+
     if (!m_client->IsConnected()) {
+        wxLogMessage("MaYaRa: DoDiscovery - client not connected after GetRadars");
         if (m_connected) {
             m_connected = false;
             ShowConnectionNotification(false);
@@ -109,17 +112,24 @@ void RadarManager::DoDiscovery() {
     std::set<std::string> current_ids;
     for (const auto& [id, info] : radars) {
         current_ids.insert(id);
+        wxLogMessage("MaYaRa: Found radar '%s' (%s %s)", id.c_str(), info.brand.c_str(), info.model.c_str());
 
         if (m_known_radar_ids.find(id) == m_known_radar_ids.end()) {
+            wxLogMessage("MaYaRa: New radar, calling HandleNewRadar");
             HandleNewRadar(id, info);
         } else {
             // Update existing radar state
+            wxLogMessage("MaYaRa: Known radar, updating state");
             if (m_radars.count(id)) {
+                wxLogMessage("MaYaRa: Calling GetState for %s", id.c_str());
                 auto state = m_client->GetState(id);
+                wxLogMessage("MaYaRa: Got state, calling UpdateState");
                 m_radars[id]->UpdateState(state);
+                wxLogMessage("MaYaRa: UpdateState done");
             }
         }
     }
+    wxLogMessage("MaYaRa: DoDiscovery - finished processing radars");
 
     // Find removed radars
     std::vector<std::string> removed;
@@ -136,19 +146,27 @@ void RadarManager::DoDiscovery() {
 void RadarManager::HandleNewRadar(const std::string& id, const RadarInfo& info) {
     wxCriticalSectionLocker lock(m_lock);
 
+    wxLogMessage("MaYaRa: HandleNewRadar - inserting id");
     m_known_radar_ids.insert(id);
 
     // Create radar display
+    wxLogMessage("MaYaRa: HandleNewRadar - creating RadarDisplay");
     auto radar = std::make_unique<RadarDisplay>(m_plugin, id, info);
 
     // Fetch capabilities
+    wxLogMessage("MaYaRa: HandleNewRadar - fetching capabilities");
     auto caps = m_client->GetCapabilities(id);
+    wxLogMessage("MaYaRa: HandleNewRadar - updating capabilities");
     radar->UpdateCapabilities(caps);
 
-    // Start receiving spokes
-    radar->Start();
+    // DON'T start receiving spokes here - do it lazily when rendering
+    // Starting WebSocket from timer callback can crash on Windows
+    wxLogMessage("MaYaRa: HandleNewRadar - NOT starting spoke receiver (deferred)");
+    // radar->Start();
 
+    wxLogMessage("MaYaRa: HandleNewRadar - storing radar");
     m_radars[id] = std::move(radar);
+    wxLogMessage("MaYaRa: HandleNewRadar - done");
 }
 
 void RadarManager::HandleRemovedRadar(const std::string& id) {
@@ -169,11 +187,11 @@ void RadarManager::TryReconnect() {
     auto ids = m_client->GetRadarIds();
 
     if (m_client->IsConnected()) {
-        wxLogMessage("MaYaRa: Connected! Found %zu radar(s)", ids.size());
+        wxLogMessage("MaYaRa: Connected! Found %u radar(s)", (unsigned)ids.size());
         m_connected = true;
         DoDiscovery();
     } else {
-        wxLogMessage("MaYaRa: Connection failed: %s", m_client->GetLastError());
+        wxLogMessage("MaYaRa: Connection failed: %s", m_client->GetLastError().c_str());
     }
 }
 
@@ -182,7 +200,7 @@ void RadarManager::ShowConnectionNotification(bool connected) {
         // Don't show popup - it can cause crashes when called from timer context
         // Just log the error and set the flag
         wxLogMessage("MaYaRa Server: Cannot connect to %s:%d",
-            m_plugin->GetServerHost(), m_plugin->GetServerPort());
+            m_plugin->GetServerHost().c_str(), m_plugin->GetServerPort());
         m_notification_shown = true;
     }
 }
